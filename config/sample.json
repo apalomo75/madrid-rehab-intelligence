@@ -1,0 +1,19 @@
+{
+  "ckan_base": "https://datos.comunidad.madrid/api/3/action",
+  "resource_id": "4e42b49c-bb6b-485a-a7b7-8f760f356855",
+  "sample_limit": 30,
+  "filters": {},
+  "max_references": 5,
+  "max_requests": 20,
+  "max_response_bytes": 524288,
+  "max_total_bytes": 5242880,
+  "timeout_seconds": 15,
+  "interval_seconds": 1,
+  "wfs_bu": "https://ovc.catastro.meh.es/INSPIRE/wfsBU.aspx",
+  "wfs_cp": "https://ovc.catastro.meh.es/INSPIRE/wfsCP.aspx",
+  "dnp_base": "https://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC/OVCCallejero.asmx/Consulta_DNPRC",
+  "scope_map": {},
+  "district_boundaries": null,
+  "district_name_field": "NOMBRE",
+  "district_candidates": ["USERA", "CHAMBERI", "CARABANCHEL"]
+}

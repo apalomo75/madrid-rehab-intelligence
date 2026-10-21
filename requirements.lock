@@ -1,0 +1,9 @@
+# Runtime usado y comprobado: Python 3.13.5.
+# Versiones exactas, incluidas dependencias transitivas de Pandas.
+pandas==2.3.3
+pyarrow==23.0.1
+numpy==2.3.4
+python-dateutil==2.9.0.post0
+pytz==2025.2
+tzdata==2025.2
+six==1.17.0
