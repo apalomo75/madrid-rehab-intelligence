@@ -102,6 +102,8 @@ def parse_parcels(body):
         if crs not in ETRS89_UTM30_CRS:
             x = y = None
         rows.append({"parcel_ref14": ref, "x": x, "y": y,
+                     "parcel_id": element.attrib.get("{http://www.opengis.net/gml/3.2}id"),
+                     **_building_wkt(element),
                      "coordinate_crs": "EPSG:25830" if x is not None else None,
                      "coordinate_scope": "parcel_reference_point" if x is not None else None})
     # Un HTML de error no debe parecer una respuesta vacía válida.

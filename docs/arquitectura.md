@@ -1,6 +1,8 @@
 # Arquitectura propuesta
 
-Estado: diseño general con **pipeline inicial Catastro–CEEE implementado y probado offline**. La integración con observaciones oficiales sigue bloqueada por acceso de red. Fecha: 21/10/2026. Véanse [ejecución](pipeline.md) y [resultados](resultados_pipeline.md). Las demás capas y la presentación web siguen sin implementar.
+Estado al 22/10/2026: ingesta municipal oficial de sesión 1 completada; sesión 2 implementa auditoría, integración por niveles, límites distritales oficiales y aplicación Streamlit/PyDeck local. La cobertura física certificado–BU permanece sin acreditar. Véanse [metodología](integracion_ceee_catastro.md) y [resultados](sesion_2.md). Las capas ajenas a Catastro/CEEE y el despliegue no forman parte de esta sesión.
+
+La implementación actual usa Pandas, PyArrow, Shapely y PyProj; conserva WKT/CRS en Parquet convencional y genera GeoJSON únicamente para dibujar el piloto. GeoPandas, GeoParquet y DuckDB del diagrama siguiente son opciones del diseño general, no dependencias del flujo implementado. El análisis ocurre fuera del proceso Streamlit; la aplicación lee productos locales verificados por hash.
 
 ## Flujo y responsabilidades
 

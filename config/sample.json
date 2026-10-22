@@ -12,7 +12,12 @@
   "wfs_bu": "https://ovc.catastro.meh.es/INSPIRE/wfsBU.aspx",
   "wfs_cp": "https://ovc.catastro.meh.es/INSPIRE/wfsCP.aspx",
   "dnp_base": "https://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC/OVCCallejero.asmx/Consulta_DNPRC",
-  "scope_map": {},
+  "scope_map": {
+    "ViviendaIndividualEnBloque": "dwelling",
+    "ViviendaUnifamiliar": "dwelling",
+    "BloqueDeViviendaCompleto": "whole_building",
+    "LocalUsoTerciario": "building_part"
+  },
   "district_boundaries": null,
   "district_name_field": "NOMBRE",
   "district_candidates": ["USERA", "CHAMBERI", "CARABANCHEL"]

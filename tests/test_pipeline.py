@@ -159,7 +159,7 @@ class SourceTests(unittest.TestCase):
         self.assertNotIn("energy_grade", result)
 
     def test_property_confirmation_requires_full_rc(self):
-        xml = f'''<consulta_dnp><bico><bi><idbi><rc><pc1>1234567</pc1><pc2>VK4712A</pc2>
+        xml = '''<consulta_dnp><bico><bi><idbi><rc><pc1>1234567</pc1><pc2>VK4712A</pc2>
         <car>0001</car><cc1>A</cc1><cc2>B</cc2></rc></idbi></bi></bico></consulta_dnp>'''
         self.assertEqual(parse_properties(xml.encode())[0]["property_ref20"], UNIT)
         self.assertEqual(parse_properties(b"<consulta_dnp><rc><pc1>1234567</pc1></rc></consulta_dnp>"), [])

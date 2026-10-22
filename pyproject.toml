@@ -7,11 +7,12 @@ name = "madrid-rehab-intelligence"
 version = "0.1.0"
 description = "Integración acotada de Catastro y certificados energéticos"
 requires-python = ">=3.11"
-dependencies = ["pandas==2.3.3", "pyarrow==23.0.1"]
+dependencies = ["pandas==2.3.3", "pyarrow==23.0.1", "shapely==2.1.2", "pyproj==3.7.2", "streamlit==1.50.0", "pydeck==0.9.1"]
 
 [project.optional-dependencies]
 geo = ["geopandas>=1.0,<2"]
-dev = ["ruff>=0.9,<1"]
+dev = ["ruff==0.14.2"]
+browser = ["playwright==1.56.0"]
 
 [project.scripts]
 madrid-rehab = "madrid_rehab.cli:main"
