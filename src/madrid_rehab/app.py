@@ -1,5 +1,6 @@
 """Aplicación local. Lee exclusivamente resultados de la sesión 2, nunca consulta Catastro."""
 
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -17,6 +18,7 @@ from madrid_rehab.map_view import (
     deck,
     display_certificate_table,
     filtered_view,
+    selected_building,
 )
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -37,16 +39,111 @@ def load_data(root, manifest_hash):
     return frames, metadata
 
 
+def selection_changed(key, ids):
+    identifier = selected_building(st.session_state.get(key), ids)
+    # Clic en fondo o deselección nativa no borra la ficha: el usuario tiene un botón explícito.
+    if identifier:
+        st.session_state.selected_bu = identifier
+
+
+def clear_selection():
+    st.session_state.selected_bu = None
+    st.session_state.map_epoch = st.session_state.get("map_epoch", 0) + 1
+
+
+def detail(row, buildings, certificates, contexts, related):
+    st.subheader("Ficha del objeto catastral")
+    st.write(f"**Identificador público:** {row.building_id}")
+    st.write(f"**Referencia de parcela:** {row.parcel_ref14}")
+    st.caption("Chamberí · Madrid · Dirección postal: no disponible en estas tablas BU.")
+    st.write(
+        f"**Uso declarado:** {'Residencial' if row.current_use == '1_residential' else row.current_use or 'No disponible'}"
+    )
+    siblings = buildings[buildings.parcel_ref14.eq(row.parcel_ref14)]
+    st.write(
+        f"**Objetos BU relacionados con la parcela en el piloto:** {siblings.building_id.nunique()}"
+    )
+    if len(siblings) > 1:
+        st.warning(
+            "Varios BU comparten parcela. No es posible asignar los certificados a uno de ellos con certeza."
+        )
+        st.write(", ".join(siblings.building_id))
+
+    def year(value):
+        return "No disponible" if pd.isna(value) else str(int(value))
+
+    st.write(
+        f"**Periodo constructivo:** {year(row.construction_oldest_year)} – {year(row.construction_newest_year)}"
+    )
+    st.caption(
+        "Años de las unidades más antigua y reciente del agregado BU. No indican reforma ni un año único del bloque."
+    )
+    st.write(
+        f"**Viviendas declaradas:** {row.dwellings_raw or 'No disponible'} · **Unidades declaradas:** {row.building_units_raw or 'No disponible'}"
+    )
+    st.caption(
+        "Una unidad BU no equivale necesariamente a una vivienda. El agregado puede reunir varios cuerpos construidos."
+    )
+    ids = contexts.loc[contexts.building_id.eq(row.building_id), "certificate_id"]
+    full = certificates[certificates.record_id.isin(ids)].drop_duplicates("record_id")
+    matching = related[related.building_id.eq(row.building_id)].record_id.nunique()
+    st.markdown("**Información energética de la parcela**")
+    st.warning(
+        "Localización en parcela; correspondencia con el edificio físico no confirmada. Una vivienda o local no califica todo el edificio. Incluso el ámbito «edificio completo» es una declaración del certificado, no una cobertura física verificada."
+    )
+    st.write(
+        f"**{len(full)} registros CEEE disponibles · {matching} cumplen los filtros actuales.**"
+    )
+    if full.empty:
+        st.info(
+            "No hay certificados vinculados en esta captura. Esto no demuestra ausencia de certificación energética."
+        )
+    else:
+        counts = full.cal_norenovglobal.value_counts().reindex(list("ABCDEFG"), fill_value=0)
+        st.bar_chart(
+            counts.rename_axis("Letra del certificado").rename("Registros CEEE"),
+            color="#158083",
+            height=180,
+        )
+        missing = (~full.cal_norenovglobal.isin(list("ABCDEFG"))).sum()
+        st.caption(
+            f"Distribución de todos los registros de la parcela. Sin letra A–G: {missing}. Se conserva el historial; no se elige un certificado vigente."
+        )
+        st.dataframe(display_certificate_table(full), hide_index=True, width="stretch")
+        st.caption(
+            "Confirmado en parcela indica coincidencia de referencia oficial; candidato o ambiguo no confirma identidad RC20 ni cobertura física. No se asigna un porcentaje de confianza sin evidencia."
+        )
+        with st.expander("Procedencia de certificados"):
+            for url in sorted({u for values in full.source_urls for u in values}):
+                st.link_button("Recurso oficial CEEE", url)
+            st.write("Capturas:", sorted(set(full.captured_at)))
+    with st.expander("Procedencia catastral y geometría"):
+        st.write(
+            f"Geometría válida · Cruza límite distrital: {'Sí' if row.crosses_district_boundary else 'No'}"
+        )
+        st.write(f"Fecha ATOM: {row.source_date} · Captura: {row.captured_at}")
+        st.link_button("Fuente oficial BU · archivo municipal", row.source_url)
+    st.button("Limpiar selección", on_click=clear_selection, width="stretch")
+
+
 def main():
     st.set_page_config(page_title="Madrid Rehab Intelligence", page_icon="🏘️", layout="wide")
-    root = Path(os.environ.get("MADRID_REHAB_SESSION2_DIR", str(DEFAULT)))
-    st.title("Madrid Rehab Intelligence")
-    st.caption(
-        "Exploración local de Catastro y certificados energéticos · Datos públicos oficiales"
+    st.markdown(
+        """<style>
+    .block-container {padding-top:2rem; padding-bottom:2rem;}
+    [data-testid="stMetricValue"] {font-size:1.65rem;}
+    [data-testid="stMetricLabel"] {white-space:normal;}
+    [data-testid="stSidebar"] {min-width:320px;}
+    </style>""",
+        unsafe_allow_html=True,
     )
+    st.title("Madrid Rehab Intelligence")
+    st.caption("Catastro y energía · Fuentes públicas oficiales · Exploración local")
+    root = Path(os.environ.get("MADRID_REHAB_SESSION2_DIR", str(DEFAULT)))
     if not (root / "quality_metrics.json").exists():
-        st.error("Faltan los resultados de la sesión 2. Ejecuta el pipeline indicado en README.md.")
-        st.code("PYTHONPATH=src .venv/bin/python -m madrid_rehab.session2")
+        st.error(
+            "Faltan los resultados de la sesión 2. Consulta README.md para generarlos en una ruta nueva."
+        )
         return
     try:
         frames, metadata = load_data(str(root), digest(root / "quality_metrics.json"))
@@ -54,20 +151,30 @@ def main():
         st.error(f"No se pueden leer resultados verificables: {exc}")
         return
     pilot = metadata["pilot"]
-    buildings = frames["pilot_buildings"]
-    certificates = frames["pilot_certificates"]
-    contexts = frames["building_certificate_contexts"]
-    st.subheader(f"Distrito piloto · {pilot['district_name'].title()}")
-    st.info(
-        "Los certificados se localizan en parcelas. La letra de una vivienda o local no califica todo el edificio. Los colores muestran disponibilidad y calidad del vínculo, no eficiencia del BU."
+    buildings, certificates, contexts = (
+        frames[n]
+        for n in ["pilot_buildings", "pilot_certificates", "building_certificate_contexts"]
     )
+    st.subheader(f"Distrito piloto · {pilot['district_name'].title()}")
     with st.sidebar:
-        st.header("Explorar datos")
+        st.header("Explorar Chamberí")
+        mode = st.radio(
+            "Modo del mapa", ["Disponibilidad de información", "Exploración energética"]
+        )
+        urban = st.toggle(
+            "Mapa urbano · requiere internet",
+            value=os.environ.get("MADRID_REHAB_OFFLINE") != "1",
+        )
+        st.caption(
+            "Desactívalo para explorar sin cartografía externa. Solo se solicitan las teselas de la vista actual."
+        )
         residential = st.checkbox("Solo BU de uso residencial declarado", value=True)
+        energy = mode == "Exploración energética"
         scope = st.selectbox(
             "Ámbito energético",
             ["all"] + list(SCOPE_LABELS),
             format_func=lambda x: "Todos los ámbitos" if x == "all" else SCOPE_LABELS[x],
+            disabled=not energy,
         )
         grade = st.selectbox(
             "Calificación energética del certificado",
@@ -77,6 +184,24 @@ def main():
             else "Sin letra"
             if x == "missing"
             else x,
+            disabled=not energy,
+        )
+        years = sorted(
+            pd.to_datetime(certificates.certificate_date, errors="coerce")
+            .dt.year.dropna()
+            .astype(int)
+            .unique()
+            .tolist()
+        )
+        year = st.selectbox(
+            "Año de la fecha del certificado",
+            ["all"] + [str(y) for y in years] + ["missing"],
+            format_func=lambda x: "Todos los años"
+            if x == "all"
+            else "Sin fecha"
+            if x == "missing"
+            else x,
+            disabled=not energy,
         )
         level = st.selectbox(
             "Nivel de vinculación",
@@ -86,18 +211,22 @@ def main():
                 "property_status": "Inmueble RC20 · identidad",
                 "physical_status": "Edificio físico · cobertura",
             }[x],
+            disabled=not energy,
         )
         status = st.selectbox(
             "Estado de vinculación",
             ["all"] + list(STATE_LABELS),
             format_func=lambda x: "Todos los estados" if x == "all" else STATE_LABELS[x],
+            disabled=not energy,
         )
         include_unlinked = st.checkbox(
             "Incluir elementos sin CEEE vinculados en esta captura", value=True
         )
         st.caption(
-            "Los filtros se aplican a certificados. Los elementos sin información se incluyen aparte; su ausencia en el registro no prueba que carezcan de certificado."
+            "BU: agregado catastral que puede reunir varios cuerpos construidos. Los colores nunca representan una letra energética del edificio."
         )
+    if not energy:
+        scope, grade, year, status, level = "all", "all", "all", "all", "parcel_status"
     objects, visible, related = filtered_view(
         buildings,
         certificates,
@@ -108,119 +237,178 @@ def main():
         level,
         include_unlinked,
         residential,
+        year,
     )
-    denominator = len(objects)
-    with_data = int(objects.certificate_count.gt(0).sum())
-    cols = st.columns(5)
-    cols[0].metric("Objetos BU representados", f"{len(objects):,}")
-    cols[1].metric("CEEE en parcelas mostradas", f"{len(visible):,}")
-    cols[2].metric(
-        "CEEE confirmados · nivel elegido", f"{int(visible[level].eq('confirmed').sum()):,}"
+    ids = set(objects.building_id)
+    if st.session_state.get("selected_bu") and st.session_state.selected_bu not in ids:
+        clear_selection()
+        st.info("La selección se ha limpiado porque el elemento queda fuera de los filtros.")
+    explore, analysis, quality = st.tabs(
+        ["Explorar mapa", "Análisis energético", "Calidad y metodología"]
     )
-    cols[3].metric(
-        "CEEE ambiguos · nivel elegido", f"{int(visible[level].eq('ambiguous').sum()):,}"
-    )
-    cols[4].metric(
-        "BU con contexto CEEE en parcela",
-        f"{100 * with_data / denominator:.1f}%" if denominator else "—",
-    )
-    st.caption(
-        f"Cobertura de contexto: {with_data:,} de {denominator:,} BU representados tienen certificados en su parcela tras los filtros. No es cobertura energética del edificio físico. Certificados contados por registro único, sin multiplicar referencias."
-    )
-    st.markdown(
-        '<span style="color:#158083">●</span> Confirmado al nivel elegido · '
-        '<span style="color:#dc871e">●</span> Información sin confirmación al nivel elegido · '
-        '<span style="color:#9199a5">●</span> Sin CEEE vinculados en esta captura',
-        unsafe_allow_html=True,
-    )
-    district = frames["districts"][frames["districts"].district_code.eq(pilot["district_code"])]
-    geometry = sh.from_wkt(district.iloc[0].geometry_wkt)
-    transformer = Transformer.from_crs(25830, 4326, always_xy=True)
-    geo = transform(transformer.transform, geometry.simplify(1, preserve_topology=True))
-    district_feature = {"type": "Feature", "properties": {}, "geometry": sh.geometry.mapping(geo)}
-    center = transformer.transform(
-        geometry.representative_point().x, geometry.representative_point().y
-    )
-    st.pydeck_chart(
-        deck(objects, district_feature, center),
-        key=f"map-{scope}-{grade}-{level}-{status}-{include_unlinked}-{residential}",
-        on_select="ignore",
-        selection_mode="single-object",
-    )
-    st.caption(
-        "Geometrías reales · Simplificación de visualización: 0,25 m, conservando topología · Sin mapa base ni consultas externas. Usa el ratón para navegar y el selector inferior para abrir una ficha verificable."
-    )
-    ids = objects.building_id.tolist()
-    if st.session_state.get("object_selector", "") not in [""] + ids:
-        st.session_state["object_selector"] = ""
-    selected = st.selectbox(
-        "Consultar ficha por identificador catastral",
-        [""] + ids,
-        format_func=lambda v: v or "Selecciona un identificador público para abrir su ficha",
-        key="object_selector",
-    )
-    if selected in ids:
-        row = objects[objects.building_id.eq(selected)].iloc[0]
-        st.subheader("Ficha del objeto catastral")
-        st.write(
-            f"**Identificador público:** {row.building_id} · **Parcela declarada:** {row.parcel_ref14}"
-        )
-        st.write(f"**Uso BU declarado:** {row.current_use or 'No disponible'}")
-        oldest = (
-            "No disponible"
-            if pd.isna(row.construction_oldest_year)
-            else str(int(row.construction_oldest_year))
-        )
-        newest = (
-            "No disponible"
-            if pd.isna(row.construction_newest_year)
-            else str(int(row.construction_newest_year))
-        )
-        st.write(
-            f"**Construcción:** año más antiguo {oldest}; más reciente {newest}. El intervalo agrega las unidades constructivas del BU; no acredita una reforma ni una fecha única del bloque."
-        )
-        st.write(
-            f"**Viviendas declaradas en BU:** {row.dwellings_raw} · **Unidades de edificio declaradas:** {row.building_units_raw}"
+    with explore:
+        cols = st.columns(3)
+        cols[0].metric("Objetos BU representados", f"{len(objects):,}")
+        cols[1].metric("CEEE en parcelas mostradas", f"{len(visible):,}")
+        cols[2].metric(
+            "CEEE confirmados · nivel elegido", f"{int(visible[level].eq('confirmed').sum()):,}"
         )
         st.caption(
-            "BuildingUnit no equivale necesariamente a vivienda. El BU puede reunir varios cuerpos construidos de la parcela."
+            "Registros CEEE únicos, sin multiplicarlos por BU. La captura 2025–2026 no es un censo completo del parque inmobiliario."
         )
-        st.write(
-            f"**Calidad geométrica:** válida para la visualización · **Cruza límites distritales:** {'Sí' if row.crosses_district_boundary else 'No'}"
-        )
-        st.write(
-            f"**Fuente:** Dirección General del Catastro · **Fecha ATOM:** {row.source_date} · **Captura:** {row.captured_at}"
-        )
-        st.link_button("Consultar fuente oficial BU (archivo municipal)", row.source_url)
-        selected_certs = related[related.building_id.eq(selected)].drop_duplicates("record_id")
-        st.markdown("**Información energética de la parcela**")
-        if selected_certs.empty:
-            st.write(
-                "No hay certificados vinculados a este objeto en la captura y filtros actuales. No equivale a ausencia de certificado administrativo."
-            )
-        else:
-            st.dataframe(
-                display_certificate_table(selected_certs), hide_index=True, width="stretch"
-            )
+        if energy:
             st.caption(
-                "confirmed en parcela solo confirma localización por referencia. candidate en edificio físico no acredita que el certificado cubra esta geometría."
+                f"Filtros: letra {'Todas' if grade == 'all' else 'Sin letra' if grade == 'missing' else grade} · ámbito {SCOPE_LABELS.get(scope, 'Todos')} · año {'Todos' if year == 'all' else 'Sin fecha' if year == 'missing' else year} · estado {STATE_LABELS.get(status, 'Todos')}. Los polígonos indican certificados que cumplen estos filtros en su parcela."
             )
-            st.write(
-                "Fuentes CEEE:",
-                sorted({url for values in selected_certs.source_urls for url in values}),
+        st.markdown(
+            "🟢 Confirmados al nivel elegido · 🟠 Información sin confirmación al nivel elegido · ⚪ Sin CEEE vinculados en esta captura · **Contorno azul: selección**"
+        )
+        if objects.empty:
+            st.info(
+                "No hay elementos con estos filtros. Prueba otros ámbitos, letras o años, o incluye elementos sin información."
             )
-            st.write("Fechas de captura CEEE:", sorted(set(selected_certs.captured_at)))
-    with st.expander("Calidad, comparación distrital y límites de uso"):
+        district = frames["districts"][frames["districts"].district_code.eq(pilot["district_code"])]
+        geometry = sh.from_wkt(district.iloc[0].geometry_wkt)
+        transformer = Transformer.from_crs(25830, 4326, always_xy=True)
+        geo = transform(transformer.transform, geometry.simplify(1, preserve_topology=True))
+        district_feature = {
+            "type": "Feature",
+            "properties": {},
+            "geometry": sh.geometry.mapping(geo),
+        }
+        # Cambiar filtros renueva eventos/índices. Selección propia conserva identidad si sigue visible.
+        signature = (
+            scope,
+            grade,
+            year,
+            status,
+            level,
+            include_unlinked,
+            residential,
+            urban,
+            st.session_state.get("map_epoch", 0),
+        )
+        key = "pilot-map-" + hashlib.sha256(repr(signature).encode()).hexdigest()[:16]
+        map_col, panel = st.columns([1.9, 1], gap="large")
+        with map_col:
+            st.pydeck_chart(
+                deck(
+                    objects, district_feature, None, urban, st.session_state.get("selected_bu", "")
+                ),
+                key=key,
+                on_select=lambda: selection_changed(key, ids),
+                selection_mode="single-object",
+            )
+            if urban:
+                st.caption(
+                    "Mapa base: © OpenStreetMap contributors · ODbL. Servicio externo sin garantía de disponibilidad; si no carga, desactiva el mapa urbano."
+                )
+                st.link_button(
+                    "Atribución y licencia OpenStreetMap", "https://www.openstreetmap.org/copyright"
+                )
+            else:
+                st.caption(
+                    "Modo sin conexión · Sin teselas, estilos ni fuentes remotas. Navega con arrastre y rueda del ratón."
+                )
+            st.caption(
+                "Contorno del distrito: Ayuntamiento de Madrid · CC BY 4.0. Polígonos: Dirección General del Catastro. Copia visual simplificada a 0,25 m; originales intactos."
+            )
+            with st.expander("Buscar por identificador público"):
+                query = st.text_input("Referencia de parcela o identificador BU")
+                matches = (
+                    objects[
+                        objects.building_id.str.contains(query.strip(), case=False, regex=False)
+                        | objects.parcel_ref14.str.contains(query.strip(), case=False, regex=False)
+                    ]
+                    if query.strip()
+                    else objects.iloc[:0]
+                )
+                if query.strip() and matches.empty:
+                    st.info("Sin resultados entre los elementos visibles.")
+                for identifier in matches.building_id.head(15):
+                    if st.button(identifier, key="search-" + identifier):
+                        st.session_state.selected_bu = identifier
+                        st.rerun()
+        with panel:
+            selected = st.session_state.get("selected_bu")
+            if selected in ids:
+                detail(
+                    objects[objects.building_id.eq(selected)].iloc[0],
+                    buildings,
+                    certificates,
+                    contexts,
+                    related,
+                )
+            else:
+                st.subheader("Consulta una parcela")
+                st.write(
+                    "Haz clic sobre un polígono para consultar sus datos y los certificados localizados en su parcela."
+                )
+                st.info(
+                    "La letra de una vivienda o local no califica todo el edificio. Ninguna vinculación al edificio físico está confirmada."
+                )
+    with analysis:
+        st.subheader("Certificados disponibles en Chamberí")
+        st.caption(
+            "Toda la captura piloto, sin los filtros del mapa. Una fila es una versión de registro CEEE, no un edificio ni necesariamente un certificado administrativo distinto."
+        )
+        st.metric("Registros CEEE del piloto", f"{len(certificates):,}")
+        left, right = st.columns(2)
+        with left:
+            st.write("**Calificación del certificado · consumo no renovable**")
+            counts = certificates.cal_norenovglobal.value_counts().reindex(
+                list("ABCDEFG"), fill_value=0
+            )
+            st.bar_chart(counts.rename("Registros CEEE"), color="#158083")
+            st.caption(
+                f"Sin letra A–G: {(~certificates.cal_norenovglobal.isin(list('ABCDEFG'))).sum()}"
+            )
+        with right:
+            st.write("**Ámbito declarado**")
+            st.bar_chart(
+                certificates.certificate_scope.map(SCOPE_LABELS)
+                .fillna("Desconocido")
+                .value_counts()
+                .rename("Registros CEEE")
+            )
+        dates = pd.to_datetime(certificates.certificate_date, errors="coerce")
+        st.write("**Evolución por mes de la fecha declarada**")
+        st.bar_chart(
+            dates.dropna()
+            .dt.to_period("M")
+            .astype(str)
+            .value_counts()
+            .sort_index()
+            .rename("Registros CEEE")
+        )
+        st.caption(
+            f"Fechas no disponibles: {dates.isna().sum()}. Evolución de registros disponibles, sin inferir renovaciones o variaciones del parque."
+        )
+        confirmed = int(certificates.parcel_status.eq("confirmed").sum())
+        st.write(
+            f"Localización confirmada en parcela: {confirmed:,} / {len(certificates):,} registros del piloto."
+        )
+        st.caption(
+            "Este denominador ya está condicionado por la localización del piloto. La cobertura municipal, incluidos los no localizados, se presenta en metodología."
+        )
+    with quality:
+        st.subheader("Fuentes y límites de interpretación")
+        st.write(
+            "CEEE: Comunidad de Madrid, recursos 2025 y 2026. Catastro: Dirección General del Catastro. Distritos: Ayuntamiento de Madrid, CC BY 4.0."
+        )
+        st.write(
+            "Tres niveles distintos: parcela (localización), inmueble RC20 (identidad), edificio físico (cobertura). Un BU único por parcela tampoco prueba cobertura física."
+        )
+        st.write(
+            "Se conservan referencias múltiples, duplicidades de origen, versiones históricas, ámbitos desconocidos y geometrías inválidas en las tablas de auditoría. Las geometrías no utilizables se excluyen del mapa."
+        )
+        st.write("Comparación distrital · recuentos de registros, no edificios certificados")
         st.dataframe(pd.DataFrame(metadata["districts"]), hide_index=True, width="stretch")
         st.write(pilot["method"])
-        st.write(
-            "Madrid: confirmaciones de edificio físico:",
-            metadata["certificates"]["physical_states"]["confirmed"],
-        )
-        st.write("Geometrías excluidas y otras incidencias:", metadata["geometry"])
-        st.caption(
-            "Distritos: Ayuntamiento de Madrid, Departamento de Cartografía, CC BY 4.0. CEEE: Comunidad de Madrid. Catastro: Dirección General del Catastro, Ministerio de Hacienda. Los registros son versiones históricas; no se elige automáticamente un certificado vigente."
-        )
+        st.write("Capturas catastrales del piloto:", sorted(set(buildings.captured_at)))
+        st.markdown((root / "informe_calidad.md").read_text().split("## Selección")[0])
+        with st.expander("Detalle técnico del manifiesto"):
+            st.json(metadata)
         st.download_button(
             "Descargar informe de calidad",
             (root / "informe_calidad.md").read_text(),

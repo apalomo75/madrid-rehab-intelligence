@@ -4,6 +4,10 @@ Estado al 22/10/2026: ingesta municipal oficial de sesión 1 completada; sesión
 
 La implementación actual usa Pandas, PyArrow, Shapely y PyProj; conserva WKT/CRS en Parquet convencional y genera GeoJSON únicamente para dibujar el piloto. GeoPandas, GeoParquet y DuckDB del diagrama siguiente son opciones del diseño general, no dependencias del flujo implementado. El análisis ocurre fuera del proceso Streamlit; la aplicación lee productos locales verificados por hash.
 
+## Evolución de presentación · sesión 3
+
+La aplicación mantiene resultados de sesión 2 de solo lectura y verifica hashes. PolygonLayer conserva la identidad BU en cada miembro y devuelve selección nativa a un estado independiente del índice. Se añaden tres pestañas, fondo raster OSM opcional y filtros temporales. No cambian el modelo de integración ni los Parquet. Sin dependencias nuevas. La aceptación en navegador está bloqueada por permisos; véanse [sesión 3](sesion_3.md) y [decisión cartográfica](componente_cartografico.md).
+
 ## Flujo y responsabilidades
 
 ```mermaid

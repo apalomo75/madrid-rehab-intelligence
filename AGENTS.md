@@ -16,6 +16,10 @@ Municipal ingestion: `PYTHONPATH=src .venv/bin/python -m madrid_rehab.ingest`.
 Offline replay: add `--offline --output-dir data/processed/session_1_replay`.
 Session 2 (offline): `PYTHONPATH=src .venv/bin/python -m madrid_rehab.session2`.
 Official boundaries (one capture): `PYTHONPATH=src .venv/bin/python -m madrid_rehab.districts`.
+Session 3 interaction: `PLAYWRIGHT_BROWSERS_PATH=/tmp/madrid-rehab-browser PYTHONPATH=src .venv/bin/python tests/browser_session3.py` (local server required).
+Session 3 preparation benchmark: `PYTHONPATH=src .venv/bin/python tests/benchmark_session3.py`.
+Session 3 offline viewer: prefix the local app command with `MADRID_REHAB_OFFLINE=1`.
+Session 3 reports/screenshots go under `reports/session_3/`; see `docs/visor.md` and `docs/componente_cartografico.md`. Browser permission failures must be reported as blocked, never as successful visual validation.
 Local app: `PYTHONPATH=src .venv/bin/python -m streamlit run src/madrid_rehab/app.py --server.address 127.0.0.1 --server.port 8512`.
 See README.md, docs/ingesta.md and docs/integracion_ceee_catastro.md for commands and data contracts.
 Never overwrite session 1 or original data. Session 2 outputs go under `data/processed/session_2/`; use a new directory for replay. Do not promote parcel matches to physical-building confirmation. The map must keep certificate scope and all matching levels visible. No automatic Git commits or internet publication are authorized.

@@ -3,6 +3,7 @@
 import json
 import base64
 
+import pandas as pd
 import pydeck as pdk
 from shapely.geometry import shape
 
@@ -35,6 +36,7 @@ def filtered_view(
     level="parcel_status",
     include_unlinked=True,
     residential=True,
+    year="all",
 ):
     objects = buildings.copy()
     if residential:
@@ -49,6 +51,9 @@ def filtered_view(
         selected = selected[selected.certificate_scope.eq(scope)]
     if grade != "all":
         selected = selected[selected.cal_norenovglobal.eq("" if grade == "missing" else grade)]
+    if year != "all":
+        dates = pd.to_datetime(selected.certificate_date, errors="coerce")
+        selected = selected[dates.isna() if year == "missing" else dates.dt.year.eq(int(year))]
     if status != "all":
         selected = selected[selected[level].eq(status)]
     related = relations.merge(
@@ -102,18 +107,78 @@ def features_for_map(frame):
     return {"type": "FeatureCollection", "features": features}
 
 
-def deck(objects, district_feature, center):
+def polygon_records(objects, selected=""):
+    """Cada miembro conserva el ID del BU; los anillos interiores siguen siendo huecos.
+
+    PolygonLayer evita identificar subcapas de GeoJsonLayer por índice. El ID público
+    viaja en el objeto seleccionado, incluso en agregados con varios polígonos.
+    """
+    records = []
+    for feature in features_for_map(objects)["features"]:
+        geometry = feature["geometry"]
+        polygons = (
+            [geometry["coordinates"]] if geometry["type"] == "Polygon" else geometry["coordinates"]
+        )
+        for polygon in polygons:
+            properties = feature["properties"]
+            records.append(
+                {
+                    **properties,
+                    "polygon": polygon,
+                    "line_color": [14, 50, 105, 255]
+                    if properties["building_id"] == selected
+                    else [65, 75, 88, 190],
+                    "line_width": 4 if properties["building_id"] == selected else 0.6,
+                }
+            )
+    return records
+
+
+def selected_building(event, visible_ids):
+    """Valida identidad del evento contra el conjunto visible, nunca usa un índice."""
+    for items in (event or {}).get("selection", {}).get("objects", {}).values():
+        for item in items:
+            identifier = item.get("building_id", item.get("properties", {}).get("building_id"))
+            if identifier in visible_ids:
+                return identifier
+    return None
+
+
+def map_style(urban=False):
+    style = {
+        "version": 8,
+        "sources": {},
+        "layers": [
+            {"id": "background", "type": "background", "paint": {"background-color": "#f4f6f9"}}
+        ],
+    }
+    if urban:
+        style["sources"]["osm"] = {
+            "type": "raster",
+            "tiles": ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+            "tileSize": 256,
+            "maxzoom": 19,
+            "attribution": '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>',
+        }
+        style["layers"].append({"id": "streets", "type": "raster", "source": "osm"})
+    return "data:application/json;base64," + base64.b64encode(json.dumps(style).encode()).decode()
+
+
+def deck(objects, district_feature, center, urban=False, selected=""):
     layer = pdk.Layer(
-        "GeoJsonLayer",
+        "PolygonLayer",
         id="buildings",
-        data=features_for_map(objects),
+        data=polygon_records(objects, selected),
+        get_polygon="polygon",
         filled=True,
         stroked=True,
         pickable=True,
         auto_highlight=True,
-        get_fill_color="properties.color",
-        get_line_color=[65, 75, 88, 160],
-        line_width_min_pixels=0.5,
+        get_fill_color="color",
+        get_line_color="line_color",
+        get_line_width="line_width",
+        line_width_units="pixels",
+        line_width_min_pixels=0.6,
     )
     border = pdk.Layer(
         "GeoJsonLayer",
@@ -122,34 +187,20 @@ def deck(objects, district_feature, center):
         filled=False,
         stroked=True,
         pickable=False,
-        get_line_color=[55, 75, 100],
-        line_width_min_pixels=2,
+        get_line_color=[30, 55, 95, 240],
+        line_width_min_pixels=3,
     )
     west, south, east, north = shape(district_feature["geometry"]).bounds
-    view = pdk.data_utils.compute_view([[west, south], [east, north]])
-    view.zoom = max(0, view.zoom - 0.3)
+    # Vista inicial fija: no depende del tamaño del conjunto filtrado ni de la selección.
+    view = pdk.ViewState(
+        longitude=(west + east) / 2, latitude=(south + north) / 2, zoom=13.8, pitch=0, bearing=0
+    )
     return pdk.Deck(
         layers=[border, layer],
         initial_view_state=view,
         map_provider="carto",
-        # Streamlit 1.50 espera una URL de estilo, no un dict. Una data URI mantiene el fondo local.
-        map_style="data:application/json;base64,"
-        + base64.b64encode(
-            json.dumps(
-                {
-                    "version": 8,
-                    "sources": {},
-                    "layers": [
-                        {
-                            "id": "background",
-                            "type": "background",
-                            "paint": {"background-color": "#f4f6f9"},
-                        }
-                    ],
-                }
-            ).encode()
-        ).decode(),
-        height=600,
+        map_style=map_style(urban),
+        height=650,
         tooltip={
             "text": "{building_id}\nParcela: {parcel_reference}\nCEEE en parcela: {certificate_count}\n{information}"
         },
@@ -158,6 +209,7 @@ def deck(objects, district_feature, center):
 
 def display_certificate_table(frame):
     columns = [
+        "record_id",
         "edif_codreg",
         "edif_refcat",
         "edif_tipo",
@@ -168,10 +220,20 @@ def display_certificate_table(frame):
         "property_status",
         "physical_status",
         "source_years",
+        "edif_superf_numeric",
+        "norenov_global_numeric",
+        "norenov_co2global_numeric",
     ]
     result = frame[[c for c in columns if c in frame]].copy()
+    for column in ["parcel_status", "property_status", "physical_status"]:
+        if column in result:
+            result[column] = result[column].map(STATE_LABELS)
     return result.rename(
         columns={
+            "record_id": "Identificador del registro original",
+            "edif_superf_numeric": "Superficie habitable declarada (m²)",
+            "norenov_global_numeric": "Consumo no renovable (kWh/m²·año)",
+            "norenov_co2global_numeric": "Emisiones (kg CO₂/m²·año)",
             "edif_codreg": "Código de certificado",
             "edif_refcat": "Referencia declarada",
             "edif_tipo": "Ámbito original",

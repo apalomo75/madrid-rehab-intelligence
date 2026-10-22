@@ -109,6 +109,9 @@ Son Parquet convencionales con WKT/CRS y, para el mapa, GeoJSON serializado. La 
 
 ## Aplicación local
 
+**Actualización sesión 3:** las descripciones de interacción y pruebas de navegador siguientes documentan el visor histórico de sesión 2. La aplicación vigente incorpora PolygonLayer con eventos, base OSM opcional y fichas de parcela; véanse [guía del visor](visor.md) y [validación pendiente](sesion_3.md). No cambia ninguna relación ni resultado de integración. El script visual vigente es `tests/browser_session3.py`.
+
+
 ```bash
 PYTHONPATH=src .venv/bin/python -m streamlit run src/madrid_rehab/app.py \
   --server.address 127.0.0.1 --server.port 8512 --server.headless true \

@@ -4,6 +4,26 @@ Proyecto de plataforma pública para explorar el potencial de rehabilitación re
 
 **Sesión 1 completada:** 115.664 registros de certificados, 141.244 filas de parcelas y 124.396 objetos BU. Originales verificables, tablas separadas y reproducción sin red. Véanse los [resultados y limitaciones](docs/sesion_1.md) y la [guía de ingesta](docs/ingesta.md). Los resultados reales y su calidad se guardan en `data/processed/session_1/informe_ingesta.md`.
 
+## Sesión 3: visor y análisis energético
+
+El visor incorpora tres pestañas, selección por ID en PolygonLayer, mapa urbano OpenStreetMap con alternativa sin conexión, ficha de parcela y filtros energéticos. **La comprobación real de clic y las capturas están pendientes:** este entorno bloquea el puerto local y Chromium. Las 73 pruebas Python/AppTest pasan; no sustituyen la aceptación en navegador. Véanse [sesión 3](docs/sesion_3.md), [uso del visor](docs/visor.md) y [decisión cartográfica y licencias](docs/componente_cartografico.md).
+
+La ejecución local usa el comando Streamlit de abajo y los datos existentes de sesión 2, sin regenerarlos. Para iniciar sin teselas externas, anteponer `MADRID_REHAB_OFFLINE=1`. No se incorporan nuevas dependencias.
+
+```bash
+PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -v
+.venv/bin/ruff check src tests
+PYTHONPATH=src .venv/bin/python tests/benchmark_session3.py
+# Prueba visual: requiere el servidor local en otra terminal e internet para OSM.
+.venv/bin/python -m pip install -r requirements-browser.lock
+PLAYWRIGHT_BROWSERS_PATH=/tmp/madrid-rehab-browser .venv/bin/python -m playwright install chromium
+PLAYWRIGHT_BROWSERS_PATH=/tmp/madrid-rehab-browser PYTHONPATH=src .venv/bin/python tests/browser_session3.py
+# Solo pruebas de esta sesión:
+PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -p 'test_session3.py' -v
+```
+
+Informes en `reports/session_3/`; las capturas se producirán únicamente si la prueba de navegador puede ejecutarse correctamente.
+
 ## Sesión 2: integración y aplicación local
 
 La integración conserva los niveles de parcela, inmueble RC20 y edificio físico. **113.072 de 115.664 registros (97,759%) confirman parcela; ninguno acredita todavía cobertura de edificio físico.** El piloto seleccionado es **Chamberí**, por calidad de localización y menor carga de revisión frente a los otros candidatos. Véanse la [metodología](docs/integracion_ceee_catastro.md) y los [resultados de sesión 2](docs/sesion_2.md).
@@ -59,7 +79,7 @@ La muestra tiene un máximo de 30 filas CEEE, cinco referencias, 20 peticiones y
 PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -v
 ```
 
-63 pruebas: contratos offline y pruebas de Streamlit con los Parquet reales cuando están disponibles. Incluyen referencias múltiples, varios BU por parcela, conflictos, geometría, ausencia de información y reproducción de cruces. Las pruebas sintéticas no representan precisión ni cobertura de las fuentes reales.
+73 pruebas: contratos offline y pruebas de Streamlit con los Parquet reales cuando están disponibles. Incluyen referencias múltiples, varios BU por parcela, conflictos, geometría, ausencia de información y reproducción de cruces. Las pruebas sintéticas no representan precisión ni cobertura de las fuentes reales.
 
 ## Organización y reglas de integración
 
