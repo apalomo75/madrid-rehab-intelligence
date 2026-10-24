@@ -139,6 +139,9 @@ def parcel_detail(row, certificates, links):
         st.info("Sin registros vinculados en esta captura; no demuestra ausencia real.")
     else:
         st.dataframe(display_certificate_table(full), hide_index=True, width="stretch")
+    from .energy_view import render_energy_parcel
+
+    render_energy_parcel("28079", row.parcel_ref14)
     render_parcel_events(row.parcel_ref14, getattr(row, "district_code", None))
     render_parcel_grants(row.parcel_ref14)
     st.markdown("**D. Calidad y limitaciones**")

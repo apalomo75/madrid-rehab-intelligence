@@ -135,3 +135,11 @@ Los overrides `MADRID_REHAB_TERRITORY_DIR` y `MADRID_REHAB_REGIONAL_GRANTS_DIR` 
 El directorio catastral por defecto pasa a `data/processed/cadastre/session_12_2_pilot_01`. Los cinco municipios siguen sin CP/BU real por DNS: la vista conserva el mensaje de ausencia, sin parcelas ficticias. Cuando haya una partición auditada, la selección y el mapa excluyen geometrías no utilizables, conservan incidencias y distinguen Building/BuildingPart. Las relaciones PRTR exactas, posibles y ambiguas se etiquetan por separado; ningún importe se reparte entre parcelas.
 
 El comando de piloto publica snapshots nuevos y solo activa un puntero PRTR verificado si incorpora municipios. Overrides anteriores y modo público protegido siguen vigentes. La revisión visual conjunta queda pendiente; AppTest no sustituye navegador real. [Fuentes, ejecución Ubuntu y limitaciones](sesion_12_2_piloto_catastral.md).
+
+## Información energética regional — sesión 13
+
+En «Comunidad de Madrid» aparece un panel CEEE con cobertura observada, municipio, distribución A–G, ámbitos y consulta por parcela aceptada. Los pilotos tienen acceso por este panel aunque su Catastro siga declarado parcial. La ficha de Madrid añade la sección «Información energética regional», conservando las evidencias históricas. Las cifras regionales nuevas aplican reglas más restrictivas para referencias múltiples y no reconocen aún referencias rústicas: 25 confirmaciones históricas no se incluyen en el nuevo resumen; siguen disponibles en la ficha histórica.
+
+Cada observación muestra fecha declarada, consumo/emisiones, valores originales (unidades sin verificar), ámbito, captura y evidencia del vínculo. D identifica ambigüedad/cuarentena, sin confirmación. Sin registros se muestra «No constan certificados vinculados en las fuentes integradas». No se atribuye letra a parcela/edificio. La coexistencia de concesión PRTR no acredita pago, obras ni mejora energética.
+
+`MADRID_REHAB_ENERGY_DIR` selecciona una captura; por defecto `data/processed/energy/session_13_final_03/`. `MADRID_REHAB_PUBLIC=1` oculta esta sección nueva y conserva la protección PRTR. AppTest ha comprobado navegación con datos reales; la inspección visual de navegador sigue pendiente para la sesión posterior. [Detalle y reproducción](sesion_13_energia_regional.md).

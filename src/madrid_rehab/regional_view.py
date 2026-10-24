@@ -198,6 +198,9 @@ def geometry_deck(frame, id_column, zoom=8):
 
 
 def render_municipality(code, name):
+    from .energy_view import render_energy_region
+
+    render_energy_region(code)
     st.markdown(f"**{name} · Parcelas y objetos BU**")
     if code == "28079":
         st.info(
@@ -220,6 +223,9 @@ def render_municipality(code, name):
                 f"Objetos con incidencias conservadas: {metadata.get('cp_issues', 0)} CP y {metadata.get('bu_issues', 0)} BU. Los no utilizables se excluyen del cruce y del mapa."
             )
         ref = st.selectbox("Parcela catastral · RC14", refs, key="regional_parcel")
+        from .energy_view import render_energy_parcel
+
+        render_energy_parcel(code, ref)
         cp = parcel_objects(str(root), sig, ref, "cp")
         bu = parcel_objects(str(root), sig, ref, "bu")
         zoom = st.slider("Detalle del mapa municipal", 10, 19, 17)
@@ -318,6 +324,8 @@ def render_municipality(code, name):
 
 
 def render_regional():
+    from .energy_view import render_energy_region
+
     st.title("Comunidad de Madrid · Cobertura municipal")
     root = Path(os.environ.get("MADRID_REHAB_TERRITORY_INVENTORY_DIR", str(DEFAULT)))
     if not (root / "manifest.json").exists():
@@ -395,15 +403,17 @@ def render_regional():
                 "Licencia y fecha de actualización de la fuente pendientes de verificar."
             )
             st.caption(
-                "Ocre: municipios con CP/BU integrado. CEEE integrado solo en Madrid. Azul: límite municipal disponible, "
+                "Ocre: municipios con CP/BU integrado en esta navegación. CEEE regional en el panel energético. Azul: límite municipal disponible, "
                 "sin CP/BU integrado. Los territorios de jurisdicción compartida se conservan "
                 "aparte y no se atribuyen a un municipio. Licencia de límites pendiente de verificar."
             )
         municipality_changed(st.session_state, selected)
+        if selected == "all":
+            render_energy_region()
         if selected != "all":
             cp_ready = code in cp_codes
             st.write(
-                f"CP/BU: {'procesados; ver captura municipal' if cp_ready else 'sin procesar'} · CEEE: {'captura Madrid capital' if code == '28079' else 'cobertura regional pendiente de validación'} · Eventos urbanísticos: {'Madrid capital' if code == '28079' else 'no integrados'}."
+                f"CP/BU: {'procesados; ver captura municipal' if cp_ready else 'sin procesar'} · CEEE: {'captura regional consultable en el panel energético' if code else 'municipio sin identidad INE validada'} · Eventos urbanísticos: {'Madrid capital' if code == '28079' else 'no integrados'}."
             )
             if code:
                 render_municipality(code, name)

@@ -1,5 +1,7 @@
 # Madrid Rehab Intelligence
 
+**Resultado vigente de sesión 13:** 236.134 contenidos CEEE canónicos regionales, 179 municipios con observaciones verificadas y 136.742 contenidos vinculados a CP aceptadas de Madrid y cinco pilotos parciales. Panel energético regional y fichas con evidencia separada de PRTR. [Resultados, límites y reproducción](docs/sesion_13_energia_regional.md). Las secciones de sesiones anteriores conservan sus estados históricos; los recursos reales del piloto 12.2 ya están disponibles localmente.
+
 Cobertura vigente: **sesión 12.1, 179 municipios oficiales con límites validados y 7.532 concesiones PRTR territorializadas**: 3.808 Madrid capital y 3.724 en otros 116 municipios; 315.527.338,99 € reconciliados. CP/BU integrado únicamente en Madrid. [Resultados, fuentes, conflictos y reproducción](docs/sesion_12_1_limites_prtr.md). Sin publicación; licencias de redistribución pendientes y validación visual bloqueada por permisos de socket. Las secciones de sesiones anteriores conservan su estado histórico.
 
 **Sesión 12.2: 332 pruebas superadas y una omitida por ausencia de los recursos reales; Ruff correcto.** Piloto Getafe/Móstoles/Leganés/Alcorcón/Alcalá preparado; los diez GET fallan por DNS en el sandbox, sin CP/BU externo incorporado. Descarga reanudable e integración desde Ubuntu con un comando: `PYTHONPATH=src .venv/bin/python -m madrid_rehab.cadastre_pilot`. [Resultados, manifiesto, límites y reproducción](docs/sesion_12_2_piloto_catastral.md). Madrid y la clasificación 12.1 permanecen intactos.
@@ -287,3 +289,16 @@ Usar siempre una salida nueva. Conserva XML exacto por registro, vistas aceptada
 cuarentena; declara cobertura parcial y no activa el visor. Pruebas específicas:
 `PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -p test_partial_cadastre.py -v`.
 Ver [criterios y trazabilidad](docs/sesion_12_2_ingesta_parcial.md).
+
+## Sesión 13: evidencia energética regional
+
+Dos fuentes locales, 236.173 apariciones y 236.134 contenidos canónicos; observaciones verificadas en los 179 municipios. 136.742 contenidos con parcela confirmada en Madrid y cinco pilotos; 3.440 parcelas con evidencia CEEE y PRTR. Sin BU o series físicas temporales confirmadas. No es un censo ni una calificación del edificio. [Resultados y comandos](docs/sesion_13_energia_regional.md), [auditoría](docs/calidad_energia_regional.md).
+
+```bash
+# Sin nuevas dependencias; salidas nuevas siempre.
+PYTHONPATH=src .venv/bin/python -m madrid_rehab.regional_energy --output-dir data/processed/energy/replay_nuevo
+PYTHONPATH=src .venv/bin/python -m madrid_rehab.energy_audit --energy-dir data/processed/energy/replay_nuevo --output-dir reports/session_13/audit_nuevo
+PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -p test_regional_energy.py -v
+```
+
+Visor: `MADRID_REHAB_ENERGY_DIR` (por defecto `data/processed/energy/session_13_final_03/`). La información nueva está protegida en modo público. Licencia CEEE declarada CC BY 4.0 en el catálogo local; PRTR pendiente, sin publicación. Se conservan snapshots anteriores y sus reglas históricas.
