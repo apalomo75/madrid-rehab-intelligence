@@ -1,4 +1,4 @@
-"""Aplicación local. Lee exclusivamente resultados de la sesión 2, nunca consulta Catastro."""
+"""Entrada municipal; main conserva el piloto histórico para regresión explícita."""
 
 import hashlib
 import json
@@ -11,6 +11,7 @@ import streamlit as st
 from pyproj import Transformer
 from shapely.ops import transform
 
+from madrid_rehab.analysis_view import render_analysis
 from madrid_rehab.ingest import digest
 from madrid_rehab.map_view import (
     SCOPE_LABELS,
@@ -51,17 +52,21 @@ def clear_selection():
     st.session_state.map_epoch = st.session_state.get("map_epoch", 0) + 1
 
 
-def detail(row, buildings, certificates, contexts, related):
+def detail(
+    row, buildings, certificates, contexts, related, district_name="Chamberí", clear_callback=None
+):
     st.subheader("Ficha del objeto catastral")
+    st.markdown("**A. Identificación · objeto BU**")
     st.write(f"**Identificador público:** {row.building_id}")
     st.write(f"**Referencia de parcela:** {row.parcel_ref14}")
-    st.caption("Chamberí · Madrid · Dirección postal: no disponible en estas tablas BU.")
+    st.caption(f"{district_name} · Madrid · Dirección postal: no disponible en estas tablas BU.")
+    st.markdown("**B. Características constructivas · registros disponibles**")
     st.write(
         f"**Uso declarado:** {'Residencial' if row.current_use == '1_residential' else row.current_use or 'No disponible'}"
     )
     siblings = buildings[buildings.parcel_ref14.eq(row.parcel_ref14)]
     st.write(
-        f"**Objetos BU relacionados con la parcela en el piloto:** {siblings.building_id.nunique()}"
+        f"**Objetos BU relacionados con la parcela en la captura:** {siblings.building_id.nunique()}"
     )
     if len(siblings) > 1:
         st.warning(
@@ -87,7 +92,7 @@ def detail(row, buildings, certificates, contexts, related):
     ids = contexts.loc[contexts.building_id.eq(row.building_id), "certificate_id"]
     full = certificates[certificates.record_id.isin(ids)].drop_duplicates("record_id")
     matching = related[related.building_id.eq(row.building_id)].record_id.nunique()
-    st.markdown("**Información energética de la parcela**")
+    st.markdown("**C. Información energética de la parcela**")
     st.warning(
         "Localización en parcela; correspondencia con el edificio físico no confirmada. Una vivienda o local no califica todo el edificio. Incluso el ámbito «edificio completo» es una declaración del certificado, no una cobertura física verificada."
     )
@@ -117,13 +122,17 @@ def detail(row, buildings, certificates, contexts, related):
             for url in sorted({u for values in full.source_urls for u in values}):
                 st.link_button("Recurso oficial CEEE", url)
             st.write("Capturas:", sorted(set(full.captured_at)))
+    st.markdown("**D. Calidad y limitaciones**")
+    st.caption(
+        "Identidad catastral disponible; cobertura energética del objeto físico desconocida. Los valores no disponibles se muestran expresamente."
+    )
     with st.expander("Procedencia catastral y geometría"):
         st.write(
             f"Geometría válida · Cruza límite distrital: {'Sí' if row.crosses_district_boundary else 'No'}"
         )
         st.write(f"Fecha ATOM: {row.source_date} · Captura: {row.captured_at}")
         st.link_button("Fuente oficial BU · archivo municipal", row.source_url)
-    st.button("Limpiar selección", on_click=clear_selection, width="stretch")
+    st.button("Limpiar selección", on_click=clear_callback or clear_selection, width="stretch")
 
 
 def main():
@@ -243,8 +252,13 @@ def main():
     if st.session_state.get("selected_bu") and st.session_state.selected_bu not in ids:
         clear_selection()
         st.info("La selección se ha limpiado porque el elemento queda fuera de los filtros.")
-    explore, analysis, quality = st.tabs(
-        ["Explorar mapa", "Análisis energético", "Calidad y metodología"]
+    explore, analysis, quality, rehab = st.tabs(
+        [
+            "Explorar mapa",
+            "Análisis energético",
+            "Calidad y metodología",
+            "Rehabilitación e ITE/ayudas",
+        ]
     )
     with explore:
         cols = st.columns(3)
@@ -391,6 +405,12 @@ def main():
         st.caption(
             "Este denominador ya está condicionado por la localización del piloto. La cobertura municipal, incluidos los no localizados, se presenta en metodología."
         )
+    with rehab:
+        render_analysis(
+            os.environ.get(
+                "MADRID_REHAB_SESSION6_DIR", str(ROOT / "data/processed/session_6_audited")
+            )
+        )
     with quality:
         st.subheader("Fuentes y límites de interpretación")
         st.write(
@@ -418,4 +438,9 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    if os.environ.get("MADRID_REHAB_PILOT") == "1":
+        main()
+    else:
+        from madrid_rehab.city_app import main as city_main
+
+        city_main()

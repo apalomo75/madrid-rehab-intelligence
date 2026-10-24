@@ -59,3 +59,37 @@ PLAYWRIGHT_BROWSERS_PATH=/tmp/madrid-rehab-browser PYTHONPATH=src \
 ```
 
 El script exige teselas reales, clics de ratón en puntos interiores de geometrías reales, ficha correcta, persistencia al navegar, limpieza, objeto sin certificados, modo sin conexión y exclusión por filtros. Nunca sustituye el clic por una escritura de estado. Si termina correctamente genera tres capturas y resultados/tiempos en `reports/session_3/`. Si falla, conserva el error y no declara aceptación visual.
+
+## Ampliación sesiones 4–6
+
+Generar `PYTHONPATH=src .venv/bin/python -m madrid_rehab.analytics` una vez; si la salida existe, usar `--output-dir` nuevo. Abrir «Rehabilitación e ITE/ayudas»: universo CP completo de Chamberí, filtros independientes del mapa por disponibilidad energética y referencia, tabla y exportación CSV. Las parcelas no evaluables permanecen visibles. No se muestran inspecciones, ayudas ni IPR ficticios. `MADRID_REHAB_SESSION6_DIR` selecciona otro perfil. La ausencia del archivo se muestra con instrucciones, sin romper el mapa anterior. El perfil comprueba su manifiesto.
+
+Comprobación manual pendiente: abrir pestaña nueva, alternar cobertura, buscar RC14 y exportar CSV; revisar nulos y denominadores; volver al mapa y comprobar selección/filtros/OSM y modo offline. No se ha validado visualmente esta ampliación.
+
+## Exploración ampliada v2
+
+El perfil vigente se lee de `data/processed/session_6_audited/`. Las capturas previas siguen disponibles por `MADRID_REHAB_SESSION6_DIR`. No se recalculan features al cambiar controles: la lectura verificada está en caché y se invalida si cambia un producto/manifiesto.
+
+Filtros combinables AND: cobertura energética, referencia literal, periodo, perfil energético, BU residencial declarado, mínimo de registros y CP única. Selecciones vacías producen cero resultados explícitos. Ordenación por RC, cantidad CEEE, año o proporción, ascendente/descendente y nulos al final. CSV incluye todas las columnas del subconjunto y neutraliza posibles fórmulas. La tabla tiene títulos legibles; el desplegable de explicación individual permite consultar denominadores y avisos.
+
+Gráficos del subconjunto: periodos constructivos, dimensiones disponibles, letras por ámbito (leyenda seleccionable), fechas, dispersión año–E/F/G con zoom y tooltip. El filtro de ámbito afecta solo gráficos energéticos, no altera silenciosamente el perfil de parcela. Comparaciones por periodo o malla CP de 500 m, con tamaños y supresión de proporciones de grupos pequeños. La auditoría de sensibilidad muestra siempre el distrito completo. No hay barrios oficiales nuevos ni IPR global.
+
+Aceptación manual pendiente: probar filtros AND y orden, descargar CSV y contrastarlo con la tabla, explicación individual, leyenda por ámbito, zoom/tooltip, cambios de zona, grupos pequeños, etiquetas y contraste; después confirmar continuidad de clic/ficha, OSM y offline del mapa previo. AppTest valida lógica y construcción de gráficos, no representación real ni entrega de teselas.
+
+## Entrada municipal vigente — sesión 7
+
+`app.py` abre Madrid capital con 21 distritos, agregados, cobertura y comparación. Selector lateral o clic en polígono llevan al distrito; «Volver a Madrid capital» limpia selección. `MADRID_REHAB_PILOT=1` conserva el visor histórico; los scripts antiguos de navegador requieren ese modo. `MADRID_REHAB_SESSION7_DIR` cambia la captura municipal.
+
+El detalle carga un distrito y dibuja una celda de 500 m. CP y BU son capas y fichas distintas; para seleccionar una CP cubierta por BU, desactivar «Mostrar objetos BU» o usar la búsqueda de referencias. La búsqueda recorre el distrito completo y cambia a su celda. El máximo de 2.500 unidades es explícito; si hay truncamiento se informa, sin cambiar indicadores del conjunto filtrado. Las geometrías analíticas nunca se recortan ni se sustituyen por la copia visual.
+
+Filtros energéticos por ámbito, letra, año, nivel y estado; residencial y unidades sin información; activación CP/BU. Los filtros del perfil analítico mantienen ámbito propio, documentado, con estado por distrito. Se conservan tabla AND, ordenación, CSV seguro, explicación individual y gráficos. Por encima de 5.000 puntos, el gráfico se agrega en periodos de 10–20 años y bandas de 5–10% con recuentos reales. No se inventan barrios ni se dibuja un IPR. La comparación municipal permite elegir distritos, ordenar y alternar letras/ámbitos, incluyendo letras no interpretables.
+
+Caché: la portada no carga geometrías CP/BU; cambios de archivos/manifiestos invalidan lecturas. Cambios de distrito limpian la selección; eventos obsoletos se contrastan con IDs visibles y distrito activo. OSM es opcional y `MADRID_REHAB_OFFLINE=1` lo desactiva. Datos reales y auditorías en [sesión 7](sesion_7_expansion_madrid.md).
+
+Verificación manual pendiente: portada con 21 distritos, selección por clic, cambiar a distrito y celda, seleccionar CP y BU, buscar una RC fuera de la celda inicial, filtros vacíos/combinados, exportación y explicación, comparar varios distritos, volver al municipio y repetir en offline. Revisar contraste, cámara, legibilidad y fluidez. AppTest no acredita WebGL, teselas ni clic real. El intento de servidor de sesión 7 falló al abrir socket local, no por un error del producto.
+
+## Navegación por zonas — sesión 7.1
+
+Al entrar en distrito se ve su extensión completa y las zonas de 500 m disponibles. Pulsar una zona abre CP/BU; «Ver distrito completo» permite elegir otra. Se mantiene la búsqueda de referencia/BU en todo el distrito y el selector técnico secundario plegado. «Restablecer filtros» conserva ubicación y limpia ficha. Un objeto excluido por distrito/celda/filtros/capa no conserva ficha. Leyenda municipal y tooltips muestran evidencia energética sobre parcelas del distrito, no potencial de rehabilitación. [Cambios, benchmark y validación pendiente](sesion_7_1_usabilidad.md).
+
+La [sesión 9](sesion_9_integracion.md) documenta escenario D: no hay nuevas capas reales ITE/IEE/ayudas. No se presentan fixtures ni eventos ficticios. Clic WebGL, OSM y legibilidad del nuevo recorrido siguen pendientes de prueba manual; el socket local está bloqueado en este entorno.

@@ -114,3 +114,13 @@ Todas las pruebas corresponden al 21/10/2026; no hubo carga, enumeración de edi
 | GET `/3/query?where=1%3D1&outFields=COD_DIS_TX%2CNOMBRE&returnGeometry=false&resultRecordCount=1&f=pjson` | Web: inaccesible | Query documentado, no validado con registros |
 
 Las respuestas web no proporcionan cabeceras, latencias o bytes fiables para este informe. No se inventan. La restricción DNS del entorno impidió una verificación directa adicional; los errores de herramienta no prueban caída del servicio. No se ha usado `Range`: debe limitarse la lectura y abortar si el servidor ignora ese encabezado en futuras muestras.
+
+## Reutilización territorial — sesión 7 (23/10/2026)
+
+Se verifican y reutilizan los originales municipales Catastro (paquete 28900/INE 28079), CEEE filtrados literalmente a MADRID y límites distritales oficiales capturados el 22/10/2026. No hay descarga nueva de conjuntos masivos. Fuente de límites: [catálogo municipal](https://datos.madrid.es/dataset/300497-0-distritos-municipales-madrid), servicio CARTOGRAFIA/LIMITES_ADMINISTRATIVOS, capa 26; códigos 01–21, nombres, GeoJSON con salida explícita EPSG:4326 y análisis EPSG:25830. Licencia del catálogo CC BY 4.0. El catálogo consultado describe 21 distritos; la captura local conserva fecha y hash sin asumir vigencia administrativa nueva.
+
+Los metadatos locales del servicio enumeran varias capas BARRIOS (17/25), pendientes de contrastar con su catálogo, licencia y versión; no hay barrios integrados. Se distinguen mallas métricas derivadas de barrios oficiales. Las fuentes ITE/IEE/ayudas siguen pendientes, sin repetir descargas fallidas. [Cobertura real, fechas, tabla y limitaciones](sesion_7_expansion_madrid.md), [calidad](calidad_sesion_7.md).
+
+## Auditoría de adquisición — sesión 8
+
+La [investigación actual](sesion_8_fuentes_oficiales.md) y el [inventario](inventario_fuentes.md) verifican formularios ITE/IEE, diccionario urbanístico CSV 2019 y documentación OpenAPI SNPSAP. **Cero nuevos registros adquiridos.** La sesión 9 usa escenario D; no se atribuyen inspecciones ni ayudas a parcelas. Los procedimientos reproducibles y bloqueos distinguen DNS local, formatos no soportados por la herramienta y 403 del visor.

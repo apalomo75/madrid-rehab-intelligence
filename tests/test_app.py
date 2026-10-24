@@ -13,7 +13,9 @@ import pandas as pd
 )
 class LocalAppTests(unittest.TestCase):
     def app(self):
-        return AppTest.from_file("src/madrid_rehab/app.py", default_timeout=45).run()
+        return AppTest.from_string(
+            "from madrid_rehab.app import main\nmain()", default_timeout=45
+        ).run()
 
     def test_real_default_view_and_detail(self):
         app = self.app()

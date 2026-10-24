@@ -1,0 +1,13 @@
+# Perfil e índice exploratorio
+
+Resultado principal A: perfil multidimensional. Contexto constructivo y evidencia energética disponibles; conservación e historial de ayudas desconocidos; calidad mediante número de filas CP, letras válidas y disponibilidad. Ninguna parcela es elegible para un **IPR global** con estas fuentes: falta conservación y no se acredita cobertura energética del edificio físico. El visor no presenta rankings de potencial ni diagnóstico.
+
+Comparador B implementado exclusivamente para auditoría en `sensitivity.parquet`: prioridad exploratoria de revisión documental, no IPR del inmueble. Fórmula: `100 * (w * clip((2026-año_más_antiguo)/100,0,1) + (1-w) * proporción_observada_EFG)`. Pesos explícitos 0,25/0,50/0,75; configurables mediante función pura `exploratory_score`. Elegibilidad B: fecha constructiva disponible, CP única y al menos tres registros con letra válida. Es un mínimo operativo arbitrario, no garantía de representatividad. No se redistribuyen pesos por ausencia de datos; no elegible produce NaN. Los años y umbrales quedan fijados a esta captura, no cambian con el reloj.
+
+Cada resultado se explica mediante año, proporción, peso y elegibilidad en los artefactos enlazados por RC14. `weight_range` mide diferencia máximo–mínimo entre los tres escenarios. Resultado real: 679 parcelas elegibles para B, mediana de variación 9,5 puntos y máximo 50. La sensibilidad y la cobertura parcial desaconsejan publicarlo como índice de necesidad. No se calcula probabilidad, ahorro, riesgo estructural, concesión futura ni predicción comercial.
+
+Robustez A: permite leer ausencias y ámbitos sin compensaciones numéricas. B es interpretable aritméticamente, pero sensible a los pesos y al muestreo administrativo. A conserva 3.790 parcelas; B solo evalúa 679 con evidencia limitada y no representativa. Una mejor puntuación requeriría evidencia nueva validada y revisión metodológica, sin promover automáticamente parcela a edificio.
+
+## Profundización de sensibilidad
+
+Se añaden 20 escenarios: pesos 0/0,25/0,5/0,75/1 y mínimos 1/3/5/10 letras. La población elegible pasa de 2.105 a 679, 208 y 30 parcelas. Además de cambios de puntos, se calcula correlación de rangos sobre la intersección con peso 0,5/mínimo 3, con nulos si la correlación no está definida. Con mínimo 3 y peso 1, la correlación frente al escenario base baja a 0,694; no se recomienda un ranking de potencial. El visor muestra curvas de cambio absoluto mediano y la tabla de elegibilidad. Los filtros de exploración no alteran esta auditoría del universo completo. [Resultados y límites](auditoria_analitica_chamberi.md).

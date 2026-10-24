@@ -26,6 +26,22 @@ COLORS = {
 }
 
 
+def filter_certificates(
+    certificates, scope="all", grade="all", status="all", level="parcel_status", year="all"
+):
+    selected = certificates.copy()
+    if scope != "all":
+        selected = selected[selected.certificate_scope.eq(scope)]
+    if grade != "all":
+        selected = selected[selected.cal_norenovglobal.eq("" if grade == "missing" else grade)]
+    if year != "all":
+        dates = pd.to_datetime(selected.certificate_date, errors="coerce")
+        selected = selected[dates.isna() if year == "missing" else dates.dt.year.eq(int(year))]
+    if status != "all":
+        selected = selected[selected[level].eq(status)]
+    return selected
+
+
 def filtered_view(
     buildings,
     certificates,
@@ -46,16 +62,7 @@ def filtered_view(
     full_related = relations.merge(
         certificates, left_on="certificate_id", right_on="record_id", validate="many_to_one"
     )
-    selected = certificates.copy()
-    if scope != "all":
-        selected = selected[selected.certificate_scope.eq(scope)]
-    if grade != "all":
-        selected = selected[selected.cal_norenovglobal.eq("" if grade == "missing" else grade)]
-    if year != "all":
-        dates = pd.to_datetime(selected.certificate_date, errors="coerce")
-        selected = selected[dates.isna() if year == "missing" else dates.dt.year.eq(int(year))]
-    if status != "all":
-        selected = selected[selected[level].eq(status)]
+    selected = filter_certificates(certificates, scope, grade, status, level, year)
     related = relations.merge(
         selected, left_on="certificate_id", right_on="record_id", validate="many_to_one"
     )

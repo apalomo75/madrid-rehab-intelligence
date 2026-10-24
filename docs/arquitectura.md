@@ -74,3 +74,19 @@ Streamlit ofrecerá filtros y fichas; PyDeck, geometrías simplificadas para vis
 Community Cloud permite [seleccionar repositorio, rama y punto de entrada](https://docs.streamlit.io/deploy/streamlit-community-cloud/deploy-your-app/deploy). Antes de publicar: fijar versiones, medir memoria y rendimiento, verificar licencias del mapa base y atribuciones. Las [limitaciones oficiales](https://docs.streamlit.io/deploy/streamlit-community-cloud/status) indican alojamiento en EE. UU.; evitar cargar datos personales innecesarios.
 
 La separación entre procesamiento, consultas y presentación permitirá evaluar FastAPI y MapLibre más adelante, sin comprometer ahora endpoints ni infraestructura adicional.
+
+## Sesiones 4–6
+
+`events.py`: normalización canónica y matching de eventos, CLI y procedencia, sin adaptador remoto específico aún. `analytics.py`: agregación independiente de parcelas/BU/CEEE y sensibilidad, sin dependencia de Streamlit. `analysis_view.py`: presentación del perfil, filtros y exportación; `app.py` solo incorpora la pestaña. No cambian contratos de sesión 2 ni se agregan dependencias. Fuentes no integradas se representan como desconocidas. Véase `modelo_analitico.md`.
+
+La profundización v2 separa `features.py` (contratos/agregación), `analysis_audit.py` (reconciliación), `profiles.py` (perfiles/filtros/sensibilidad/CSV), `analysis_store.py` (lectura verificada), `analysis_charts.py` (gráficos) y `analysis_view.py` (presentación/caché). `event_features.py` es la extensión opcional con control de versión CP. `analytics.py` orquesta CLI; no se agrega lógica al mapa ni dependencias. Véase auditoría de Chamberí para decisiones y limitaciones.
+
+## Sesión 7 — arquitectura municipal escalonada
+
+La entrada principal abre `city_app.main`; `app.main` conserva el piloto histórico mediante `MADRID_REHAB_PILOT=1`. `city_pipeline` verifica sesión 2 y límites locales, reutiliza una agregación municipal de features/perfiles y escribe particiones por distrito. `territory` resuelve referencias territoriales sin elegir filas arbitrarias; `city_audit` reconcilia universos, estados y residuales. Los lectores de `city_store` usan nombres fijos, hashes y cachés con invalidación. El detalle `district_view` reutiliza filtros/ficha BU y añade ficha CP; `city_maps` valida selección por identidad y limita dibujo a una celda y 2.500 unidades. No se serializa Madrid detallado en portada.
+
+Los perfiles distritales mantienen contrato analítico v2; el contenedor municipal usa `session7-v1`, con hashes de manifiestos distritales y fuente. La aplicación lee agregados pequeños para comparar 21 distritos, sin unir geometrías municipales por interacción. Los eventos futuros conservan procedencia, misma versión CP y declaraciones separadas de territorio verificado. Para otra ciudad deben configurarse y validarse fuentes/municipio/límites/CRS/códigos; la CLI actual admite solo Madrid. [Diseño, productos y comandos](sesion_7_expansion_madrid.md).
+
+## Preparación y auditoría de sesiones 7.1–9
+
+`city_maps` añade geometrías de malla 500 m y selección por ID; el detalle no depende de coordenadas de clic. La portada sigue sin leer geometrías CP/BU. `official_sources` adquiere recursos oficiales acotados y conserva errores/manifestación de archivo completo; `public_events` separa tipos y fases reutilizando el contrato previo. Sus normalizados requieren revisión y no se conectan automáticamente al visor. `integration_audit` produce un informe determinista del escenario D y cobertura desconocida por distrito; no altera productos municipales. No hay nuevos eventos adquiridos ni capas administrativas activadas. Véase [sesión 9](sesion_9_integracion.md).

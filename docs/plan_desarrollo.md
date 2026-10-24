@@ -50,3 +50,11 @@ Entregable: aplicación revisable y procedimiento de actualización con métrica
 ## Fase 6 — Ampliación
 
 Extender a otros distritos después de comparar cobertura y precisión. Evaluar MapLibre/FastAPI cuando las mediciones de rendimiento o requisitos de uso lo justifiquen. No se asignan fechas de entrega hasta resolver los accesos administrativos.
+
+## Actualización 23/10/2026
+
+La misión explícita de sesiones 4–6 autoriza investigación ITE/IEE/ayudas, contratos, análisis y ampliación local Streamlit. Sustituye las restricciones históricas de alcance inicial de este documento. No autoriza contactos externos, commits ni publicación. Estado y pendientes en `avance_nocturno.md`.
+
+## Sesión 7 — expansión autorizada y ejecutada
+
+La misión municipal amplía el alcance a los 21 distritos usando datos locales, sin publicación ni commits. Portada, detalle por celdas y perfiles están implementados; ver `sesion_7_expansion_madrid.md` y `avance_sesion_7.md`. La regresión histórica se mantiene mediante modo piloto explícito. Validación visual sigue pendiente; ITE/IEE, ayudas reales y barrios se reservan para adquisición/revisión posterior.
