@@ -302,3 +302,18 @@ PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -p test_regional_e
 ```
 
 Visor: `MADRID_REHAB_ENERGY_DIR` (por defecto `data/processed/energy/session_13_final_03/`). La información nueva está protegida en modo público. Licencia CEEE declarada CC BY 4.0 en el catálogo local; PRTR pendiente, sin publicación. Se conservan snapshots anteriores y sus reglas históricas.
+
+## Sesión 14: conservación e inspecciones
+
+Capa offline con **14.645 órdenes/obligaciones en 9.036 parcelas**, reutilizando los 124.175 eventos municipales. No se han integrado actas REC: las obligaciones de presentación y las menciones indirectas desfavorables no se cuentan como dictámenes. El contraste de COD_NDP 11140360 coincide con la dirección indicada, pero no confirma CP. Sin recolector masivo ni publicación. [Resultados y límites](docs/sesion_14_conservacion_ite_iee.md), [fuentes y permisos](docs/fuentes_conservacion_madrid.md), [modelo](docs/modelo_conservacion.md).
+
+No hay nuevas dependencias. Instalación y app conservan los comandos anteriores. Productos por defecto: `data/processed/conservation/session_14_final_02/`; el visor admite `MADRID_REHAB_CONSERVATION_DIR`. La nueva sección está oculta en modo público. Cada reproducción requiere directorio nuevo:
+
+```bash
+PYTHONPATH=src .venv/bin/python -m madrid_rehab.conservation --output-dir data/processed/conservation/replay_nuevo
+PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -p test_conservation.py -v
+PYTHONPATH=src .venv/bin/python tests/benchmark_conservation.py --output reports/session_14/benchmark_nuevo.json
+PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -v
+.venv/bin/ruff check src tests
+.venv/bin/ruff format --check src/madrid_rehab/conservation.py src/madrid_rehab/conservation_view.py src/madrid_rehab/rec.py src/madrid_rehab/administrative_view.py tests/test_conservation.py tests/benchmark_conservation.py
+```

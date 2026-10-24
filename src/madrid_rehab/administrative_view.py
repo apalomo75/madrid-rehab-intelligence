@@ -150,6 +150,9 @@ def parcel_events(ref, district=None):
 
 
 def render_parcel_events(ref, district=None):
+    from .conservation_view import render_conservation_parcel
+
+    render_conservation_parcel(ref)
     st.markdown("**Eventos administrativos asociados**")
     try:
         frame = parcel_events(ref, district)
@@ -162,7 +165,9 @@ def render_parcel_events(ref, district=None):
     if frame.empty:
         st.info("No se han localizado eventos en las fuentes integradas")
     else:
-        st.dataframe(frame, hide_index=True, width="stretch")
+        presented = frame.copy()
+        presented["event_type"] = presented.event_type.map(LABELS).fillna(presented.event_type)
+        st.dataframe(presented, hide_index=True, width="stretch")
     st.caption(NOTICE)
 
 
@@ -221,6 +226,9 @@ def render_activity(district=None, parcels=None, zone=None):
         st.error(f"No se puede leer el distrito administrativo: {exc}")
         return
     prefix = "admin_" + district
+    from .conservation_view import render_conservation_activity
+
+    render_conservation_activity(frame, prefix)
     filters = {}
     labels = {
         "source_file": "Fuente",
