@@ -105,3 +105,33 @@ La capa de obligaciones se interpreta como «Obligaciones ITE/IEE pendientes seg
 La nueva captura se selecciona con `MADRID_REHAB_ADMIN_DIR` (por defecto `data/processed/administrative_events/session_10_final_01/`) y debe corresponder al mismo hash CP municipal. La caché verifica productos y carga una partición distrital; la portada no lee todos los expedientes. Si falta la captura, aparecen instrucciones y el visor energético sigue disponible.
 
 Aceptación visual **bloqueada** en esta sesión: `reports/session_10/server_attempt.log` registra `PermissionError` al crear el socket. Revisar manualmente mapa, leyendas, superposición, clic/ficha CP y BU, filtros, exportaciones y continuidad del recorrido Madrid → distrito → celda; repetir con mapa urbano desactivado. La construcción de la nueva capa en AppTest no acredita su representación real.
+
+## Subvenciones PRTR — sesión 11
+
+Nueva pestaña municipal/distrital «Subvenciones PRTR»: programa, modalidad, importes, año declarado, calidad territorial, tabla y CSV local seguro. Tipología física y datos energéticos individuales no constan: la interfaz lo indica y no los inventa. La ficha CP muestra solo relaciones PRTR confirmadas y distingue expedientes múltiples, viviendas P4 y edificio físico. Concesión no implica pago o ejecución.
+
+El selector «Navegación» separa Madrid capital de «Comunidad de Madrid — Subvenciones». La vista regional conserva toda la captura, agrupa calidad y programa y permite filtrar Madrid confirmado o pendientes/contradictorios. No hay límites municipales oficiales descargados ni comparación exhaustiva entre 179 municipios; el aviso permanece visible. No se muestran fichas CP/BU fuera de la captura municipal.
+
+Captura por defecto `data/processed/grants/session_11_final_03/`, override `MADRID_REHAB_GRANTS_DIR`; verificación de hashes y compatibilidad CP antes de mostrar relaciones. `MADRID_REHAB_PUBLIC=1` desactiva PRTR en todas sus vistas y exportaciones. [Resultados y comandos](sesion_11_subvenciones_prtr.md), [limitaciones y revisión manual](avance_sesion_11.md). Validación visual real pendiente; AppTest no acredita clic o legibilidad.
+
+## Sesión 12 — navegación regional por cobertura
+
+La opción «Comunidad de Madrid — Subvenciones» abre ahora la cobertura municipal de sesión 12. El selector permite los 179 recursos de los feeds oficiales, usando **código Catastro** mientras falta el catálogo INE completo. Al elegir un municipio externo muestra pendientes; no inventa límites, fichas ni cifras de cero ayudas. Madrid enlaza conceptualmente con su navegación completa de 21 distritos en la opción «Madrid capital».
+
+La captura regional PRTR se conserva y permite programa, rango de importe y cobertura CP confirmada. Las métricas indican selección / 7.532 expedientes; los importes se suman por expediente. Los detalles municipales externos solo aparecerán tras aportar asignaciones oficiales verificadas. La tabla principal PRTR muestra columnas breves y nombres legibles; campos originales permitidos quedan en desplegable técnico y CSV seguro local. No se exponen direcciones, atributos originales completos ni variables censales privadas. `MADRID_REHAB_PUBLIC=1` desactiva PRTR también en esta ruta.
+
+Con `MADRID_REHAB_TERRITORY_DIR` apuntando a límites importados se habilita mapa municipal y selector INE. Con `MADRID_REHAB_CADASTRE_DIR` apuntando a particiones verificadas se habilitan selector RC14, contexto de parcelas por ventana y zoom (máximo 1.500), BU y ficha. Se leen geometrías solo del municipio y selección; al cambiar municipio se reinicia la selección parcelaria. Las geometrías analíticas originales se conservan. Esta rama externa está comprobada mediante fixtures sintéticas, no con datos catastrales reales nuevos.
+
+Datos por defecto: `data/processed/territory/session_12_final_01/` y `data/processed/grants/regional/session_12_final_01/`. Overrides `MADRID_REHAB_TERRITORY_INVENTORY_DIR` y `MADRID_REHAB_REGIONAL_GRANTS_DIR`; deben apuntar a capturas completas y compatibles. El servidor de esta sesión falla con permiso de socket; no hay aceptación visual en navegador. Véase [lista de comprobación manual](avance_sesion_12.md).
+
+## Sesión 12.1: límites y concesiones regionales
+
+La vista regional usa los límites de `data/processed/territory/session_12_1_final_01` y decisiones de `data/processed/grants/regional/session_12_1_final_02`. Selección por INE, polígonos municipales reales, totales y tabla por programa, filtros de calidad A/B/C y CP. Ocre distingue Madrid con CP/BU integrado; azul corresponde a límite municipal sin CP/BU integrado. Concesión geográficamente localizada no confirma parcela, pago, ejecución ni oportunidad comercial.
+
+Los overrides `MADRID_REHAB_TERRITORY_DIR` y `MADRID_REHAB_REGIONAL_GRANTS_DIR` seleccionan replays auditados; la carga catastral sigue siendo selectiva. `MADRID_REHAB_PUBLIC=1` impide cargar y mostrar PRTR. Licencias específicas pendientes: uso local. [Método, resultados y reproducción](sesion_12_1_limites_prtr.md). AppTest pasa; aceptación visual bloqueada por permiso de socket, sin capturas de navegador.
+
+## Sesión 12.2: fichas piloto y cobertura verificada
+
+El directorio catastral por defecto pasa a `data/processed/cadastre/session_12_2_pilot_01`. Los cinco municipios siguen sin CP/BU real por DNS: la vista conserva el mensaje de ausencia, sin parcelas ficticias. Cuando haya una partición auditada, la selección y el mapa excluyen geometrías no utilizables, conservan incidencias y distinguen Building/BuildingPart. Las relaciones PRTR exactas, posibles y ambiguas se etiquetan por separado; ningún importe se reparte entre parcelas.
+
+El comando de piloto publica snapshots nuevos y solo activa un puntero PRTR verificado si incorpora municipios. Overrides anteriores y modo público protegido siguen vigentes. La revisión visual conjunta queda pendiente; AppTest no sustituye navegador real. [Fuentes, ejecución Ubuntu y limitaciones](sesion_12_2_piloto_catastral.md).

@@ -189,7 +189,7 @@ def render_activity(district=None, parcels=None, zone=None):
         "Obligaciones ITE/IEE pendientes según consulta oficial · filtros independientes de los energéticos."
     )
     st.info(
-        "Subvenciones: disponible una convocatoria BOCM de 2022; no hay concesiones individuales integradas."
+        "Subvenciones: consulta la sección Subvenciones PRTR; entidad especializada separada de estos eventos."
     )
     if district is None:
         st.write(

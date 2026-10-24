@@ -196,7 +196,7 @@ def read_energy(path):
             )
 
 
-def cadastral_rows(path, kind):
+def cadastral_rows(path, kind, strict_count=False):
     target = "Building" if kind == "edificios" else "CadastralParcel"
     parser = parse_buildings if kind == "edificios" else parse_parcels
     with zipfile.ZipFile(path) as archive:
@@ -230,6 +230,8 @@ def cadastral_rows(path, kind):
                     element.clear()
                     root.clear()
             if expected is not None and seen != expected:
+                if strict_count:
+                    raise ValueError(f"Colección incompleta: cabecera {expected}; objetos {seen}")
                 print(f"AVISO {kind}: cabecera declara {expected}; XML contiene {seen}", flush=True)
 
 

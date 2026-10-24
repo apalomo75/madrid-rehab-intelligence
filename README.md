@@ -1,6 +1,8 @@
 # Madrid Rehab Intelligence
 
-Estado vigente: **Madrid capital, 21 distritos y 229 pruebas unittest/AppTest superadas**. Sesión 10: 124.175 eventos administrativos reales; 112.783 vinculados a 49.855 parcelas. [Integración administrativa](docs/sesion_10_integracion_administrativa.md). Producto inmobiliario/energético preservado: `data/processed/session_7_final/`. [Expansión y cobertura](docs/sesion_7_expansion_madrid.md), [calidad municipal](docs/calidad_sesion_7.md). El piloto de Chamberí conserva sus indicadores. Sin IPR global; validación visual bloqueada por restricciones del sandbox.
+Cobertura vigente: **sesión 12.1, 179 municipios oficiales con límites validados y 7.532 concesiones PRTR territorializadas**: 3.808 Madrid capital y 3.724 en otros 116 municipios; 315.527.338,99 € reconciliados. CP/BU integrado únicamente en Madrid. [Resultados, fuentes, conflictos y reproducción](docs/sesion_12_1_limites_prtr.md). Sin publicación; licencias de redistribución pendientes y validación visual bloqueada por permisos de socket. Las secciones de sesiones anteriores conservan su estado histórico.
+
+**Sesión 12.2: 332 pruebas superadas y una omitida por ausencia de los recursos reales; Ruff correcto.** Piloto Getafe/Móstoles/Leganés/Alcorcón/Alcalá preparado; los diez GET fallan por DNS en el sandbox, sin CP/BU externo incorporado. Descarga reanudable e integración desde Ubuntu con un comando: `PYTHONPATH=src .venv/bin/python -m madrid_rehab.cadastre_pilot`. [Resultados, manifiesto, límites y reproducción](docs/sesion_12_2_piloto_catastral.md). Madrid y la clasificación 12.1 permanecen intactos.
 
 Proyecto de plataforma pública para explorar el potencial de rehabilitación residencial en Madrid.
 
@@ -208,3 +210,80 @@ PYTHONPATH=src .venv/bin/python -m streamlit run src/madrid_rehab/app.py --serve
 ```
 
 Sin compilación ni dependencias Python nuevas. Los originales quedan copiados por SHA-256; no se ejecutan fórmulas ni macros. Los datos e informes voluminosos están ignorados. La validación visual permanece bloqueada por permisos del socket; AppTest no sustituye WebGL/clic real. Véase [avance y resultados finales](docs/avance_sesion_10.md).
+
+## Sesión 11: subvenciones PRTR reales y base regional
+
+7.532 concesiones reales conservadas localmente; entidad especializada con importes por expediente y relaciones catastrales sin doble conteo. Nueva pestaña «Subvenciones PRTR» en Madrid/distritos y navegación «Comunidad de Madrid — Subvenciones». [Resultados](docs/sesion_11_subvenciones_prtr.md), [calidad](docs/calidad_subvenciones_prtr.md), [arquitectura regional](docs/arquitectura_regional.md), [licencia](docs/licencia_datos_prtr.md) y [validación manual](docs/avance_sesion_11.md). Catálogo/límites de los 179 municipios pendientes por bloqueo DNS; CP/BU sigue siendo solo Madrid. Sin publicación ni derechos de redistribución inferidos.
+
+```bash
+# Instalación sin dependencias nuevas:
+.venv/bin/python -m pip install -r requirements.lock
+# Captura vigente ya generada; para repetir, salida nueva obligatoria:
+PYTHONPATH=src .venv/bin/python -m madrid_rehab.grants --output-dir data/processed/grants/replay_nuevo
+PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -p test_grants.py -v
+PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -v
+.venv/bin/ruff check src tests
+PYTHONPATH=src .venv/bin/python tests/benchmark_grants.py --output reports/session_11/benchmark_nuevo.json
+PYTHONPATH=src .venv/bin/python -m streamlit run src/madrid_rehab/app.py --server.address 127.0.0.1 --server.port 8512
+```
+
+`MADRID_REHAB_GRANTS_DIR` selecciona captura PRTR con el mismo CP. `MADRID_REHAB_PUBLIC=1` desactiva exposición PRTR por licencia no verificada. No hay paso de build. Las afirmaciones anteriores sobre ausencia de concesiones describen sesiones históricas; la sesión 11 incorpora la nueva fuente PRTR sin sustituir la base administrativa de sesión 10.
+
+## Sesión 12: arquitectura regional y cobertura parcial
+
+**Inventario oficial de 179 recursos municipales Catastro; catálogo INE completo, límites y piloto externo pendientes por DNS.** Continúan procesados únicamente Madrid capital (CP/BU) y sus 21 distritos. Se preservan los 7.532 PRTR y 315.527.338,99 €; 3.805 expedientes siguen confirmados en Madrid y 3.727 pendientes. No se declara clasificación espacial regional ni ampliación catastral conseguida.
+
+Componentes nuevos: inventario y cobertura por recurso, importador de límites oficiales/catálogo revisado, pipeline CP/BU municipal con checkpoints, cruce PRTR regional independiente, navegación por 179 recursos y estados de disponibilidad. El visor no presenta municipios sin CP como si tuvieran ficha catastral. Las ramas externas se han probado con fixtures sintéticas; no sustituyen el piloto real. Sin nuevas dependencias, compilación ni servidores.
+
+```bash
+# Reproducción: cada producto/informe exige una ruta nueva.
+PYTHONPATH=src .venv/bin/python -m madrid_rehab.regional_cadastre --inventory-output data/processed/territory/replay_new
+PYTHONPATH=src .venv/bin/python -m madrid_rehab.regional_grants --output-dir data/processed/grants/regional/replay_new
+PYTHONPATH=src .venv/bin/python -m madrid_rehab.regional_audit --output-dir reports/session_12/audit_new
+PYTHONPATH=src .venv/bin/python tests/benchmark_regional.py --output reports/session_12/benchmark_new.json
+PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -p test_regional_expansion.py -v
+PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -v
+.venv/bin/ruff check src tests
+PYTHONPATH=src .venv/bin/python -m streamlit run src/madrid_rehab/app.py --server.address 127.0.0.1 --server.port 8512
+```
+
+Instalación: `.venv/bin/python -m pip install -r requirements.lock`. Productos vigentes en `data/processed/territory/session_12_final_01/` y `data/processed/grants/regional/session_12_final_01/`. Overrides de vista: `MADRID_REHAB_TERRITORY_INVENTORY_DIR`, `MADRID_REHAB_REGIONAL_GRANTS_DIR`; `MADRID_REHAB_TERRITORY_DIR` para límites validados y `MADRID_REHAB_CADASTRE_DIR` para particiones municipales nuevas. Estos dos últimos productos **no se han generado con datos externos reales**. `MADRID_REHAB_PUBLIC=1` sigue desactivando PRTR. El servidor local y la validación en navegador están bloqueados en este entorno por permisos de socket.
+
+[Entrega y reproducción](docs/sesion_12_expansion_regional.md), [límites](docs/calidad_limites_municipales.md), [pipeline catastral](docs/catastro_regional.md), [cobertura](docs/cobertura_municipal.md) y [avance y comprobación manual](docs/avance_sesion_12.md). No commits ni push.
+
+## Sesión 12.1: clasificación PRTR con GeoPackage IDEM
+
+No requiere paquetes nuevos ni descargas. Fuente local: `data/raw/territory/madrid/unidades_administrativas.gpkg`.
+
+```bash
+# Elegir directorios nuevos en cada ejecución:
+PYTHONPATH=src .venv/bin/python -m madrid_rehab.municipal_boundaries --output-dir data/processed/territory/replay_121_new
+PYTHONPATH=src .venv/bin/python -m madrid_rehab.territorial_prtr --boundaries-dir data/processed/territory/replay_121_new --output-dir data/processed/grants/regional/replay_121_new
+PYTHONPATH=src .venv/bin/python -m madrid_rehab.territorial_report --boundaries-dir data/processed/territory/replay_121_new --classification-dir data/processed/grants/regional/replay_121_new --output-dir reports/session_12_1/replay_new
+PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -p test_territorial_prtr.py -v
+.venv/bin/ruff check src tests
+```
+
+El visor regional usa por defecto `territory/session_12_1_final_01` y `grants/regional/session_12_1_final_02`, ambos bajo `data/processed/`. Variables de selección y metodología en la [documentación de sesión 12.1](docs/sesion_12_1_limites_prtr.md). El modo público sigue sin exponer PRTR. Las dos comunidades jurisdiccionales no se atribuyen a un municipio único.
+
+## Piloto CP/BU de sesión 12.2
+
+```bash
+# Ubuntu, desde la raíz: descarga, valida, integra y cruza; reanudable.
+PYTHONPATH=src .venv/bin/python -m madrid_rehab.cadastre_pilot
+# Solo descarga; biblioteca estándar, sin instalaciones nuevas:
+PYTHONPATH=src python3 -m madrid_rehab.cadastre_download
+# Pruebas específicas y suite completa:
+PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -p test_cadastre_pilot.py -v
+PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -v
+.venv/bin/ruff check src tests
+```
+
+Código 2 indica cobertura pendiente; no una descarga completada. Las fuentes se conservan bajo `data/raw/cadastre/session_12_2_capture_01`, las particiones bajo `data/processed/cadastre/session_12_2_pilot_01` y cada ejecución genera un snapshot regional nuevo. La activación del visor ocurre solo con incorporación de particiones; mientras falten archivos sigue el estado anterior. Ver [sesión 12.2](docs/sesion_12_2_piloto_catastral.md) para informes, overrides y replay offline.
+
+Ingesta parcial explícita del piloto 12.2, reutilizando la última evidencia real y sin
+red: `PYTHONPATH=src .venv/bin/python -m madrid_rehab.partial_cadastre --output-dir data/processed/cadastre/replay_partial_new`.
+Usar siempre una salida nueva. Conserva XML exacto por registro, vistas aceptadas y
+cuarentena; declara cobertura parcial y no activa el visor. Pruebas específicas:
+`PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -p test_partial_cadastre.py -v`.
+Ver [criterios y trazabilidad](docs/sesion_12_2_ingesta_parcial.md).

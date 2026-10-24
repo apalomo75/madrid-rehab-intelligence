@@ -7,6 +7,7 @@ import os
 import pandas as pd
 import streamlit as st
 
+from madrid_rehab.grants_view import render_grants, render_parcel_grants
 from madrid_rehab.administrative_view import render_activity, render_parcel_events
 
 from .analysis_view import render_analysis
@@ -139,6 +140,7 @@ def parcel_detail(row, certificates, links):
     else:
         st.dataframe(display_certificate_table(full), hide_index=True, width="stretch")
     render_parcel_events(row.parcel_ref14, getattr(row, "district_code", None))
+    render_parcel_grants(row.parcel_ref14)
     st.markdown("**D. Calidad y limitaciones**")
     st.caption(f"Captura CP: {row.captured_at}; fuente: {row.source_date}")
     st.link_button("Fuente oficial CP", row.source_url)
@@ -169,9 +171,11 @@ def render_district(root, code, overview):
     )
     name = data["manifest"]["district_name"]
     st.subheader(f"Distrito {code} · {name}")
-    map_tab, analysis_tab, activity_tab = st.tabs(
-        ["Mapa y ficha", "Análisis del distrito", "Actividad y rehabilitación"]
+    map_tab, analysis_tab, activity_tab, grants_tab = st.tabs(
+        ["Mapa y ficha", "Análisis del distrito", "Actividad y rehabilitación", "Subvenciones PRTR"]
     )
+    with grants_tab:
+        render_grants(district=code)
     with st.sidebar:
         st.header("Ubicación")
         st.button("Ver distrito completo", on_click=district_home, args=(code,))

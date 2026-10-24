@@ -6,6 +6,7 @@ from pathlib import Path
 import altair as alt
 import streamlit as st
 
+from madrid_rehab.grants_view import render_grants
 from madrid_rehab.administrative_view import render_activity
 from madrid_rehab.city_maps import change_district, district_selection, overview_deck
 from madrid_rehab.city_store import load_overview, signature
@@ -162,6 +163,12 @@ def main():
         </style>""",
         unsafe_allow_html=True,
     )
+    view = st.sidebar.radio("Navegación", ["Madrid capital", "Comunidad de Madrid — Subvenciones"])
+    if view == "Comunidad de Madrid — Subvenciones":
+        from .regional_view import render_regional
+
+        render_regional()
+        return
     st.title("Madrid Rehab Intelligence · Madrid capital")
     st.caption("21 distritos oficiales · Parcela, BU y certificado diferenciados · Sin IPR global")
     root = Path(os.environ.get("MADRID_REHAB_SESSION7_DIR", str(DEFAULT))).resolve()
@@ -203,12 +210,13 @@ def main():
         f"{municipal['record_parcel_pairs']:,} pares registro/parcela. {municipal['unassigned_parcel_references']} referencias sin distrito único. "
         "Datos observados del paquete municipal: no garantizan cobertura de todos los edificios o certificados existentes."
     )
-    map_tab, comparison_tab, quality_tab, activity_tab = st.tabs(
+    map_tab, comparison_tab, quality_tab, activity_tab, grants_tab = st.tabs(
         [
             "Madrid · mapa general",
             "Comparar distritos",
             "Cobertura y calidad",
             "Actividad y rehabilitación",
+            "Subvenciones PRTR",
         ]
     )
     with map_tab:
@@ -255,6 +263,8 @@ def main():
 
     with activity_tab:
         render_activity()
+    with grants_tab:
+        render_grants()
 
 
 if __name__ == "__main__":
