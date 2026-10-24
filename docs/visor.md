@@ -93,3 +93,15 @@ Verificación manual pendiente: portada con 21 distritos, selección por clic, c
 Al entrar en distrito se ve su extensión completa y las zonas de 500 m disponibles. Pulsar una zona abre CP/BU; «Ver distrito completo» permite elegir otra. Se mantiene la búsqueda de referencia/BU en todo el distrito y el selector técnico secundario plegado. «Restablecer filtros» conserva ubicación y limpia ficha. Un objeto excluido por distrito/celda/filtros/capa no conserva ficha. Leyenda municipal y tooltips muestran evidencia energética sobre parcelas del distrito, no potencial de rehabilitación. [Cambios, benchmark y validación pendiente](sesion_7_1_usabilidad.md).
 
 La [sesión 9](sesion_9_integracion.md) documenta escenario D: no hay nuevas capas reales ITE/IEE/ayudas. No se presentan fixtures ni eventos ficticios. Clic WebGL, OSM y legibilidad del nuevo recorrido siguen pendientes de prueba manual; el socket local está bloqueado en este entorno.
+
+## Actividad administrativa — sesión 10
+
+La aplicación municipal incorpora «Actividad y rehabilitación» con archivos reales normalizados. En Madrid aparecen agregados y selector de distrito para lectura selectiva. Dentro del distrito, filtros por fuente, tipo, periodo, categoría, vínculo y estado; series y conteos de expedientes/obligaciones, parcelas confirmadas, repeticiones y no vinculados. Los filtros son independientes de los energéticos.
+
+Al seleccionar una celda, se puede activar «Mostrar eventos confirmados de la celda»: rojo órdenes, azul licencias, violeta declaraciones, amarillo ITE y verde IEE. Se dibujan como máximo 2.500 geometrías de parcelas, nunca ubicaciones territoriales candidatas. Los tipos pueden superponerse en la misma parcela. La ficha CP y la de BU incluyen «Eventos administrativos asociados», siempre con evidencia de parcela, origen, fecha, estado y limitaciones. El estado vacío dice «No se han localizado eventos en las fuentes integradas».
+
+La capa de obligaciones se interpreta como «Obligaciones ITE/IEE pendientes según consulta oficial» de 24/10/2026; no informa resultados, deficiencias ni infracciones. La convocatoria BOCM no se muestra como ayuda concedida. Exportación CSV neutralizada contra fórmulas y sin raw_json ni campos personales ajenos a la consulta. Las fechas de descarga y licencias de reutilización no verificadas siguen desconocidas; uso local.
+
+La nueva captura se selecciona con `MADRID_REHAB_ADMIN_DIR` (por defecto `data/processed/administrative_events/session_10_final_01/`) y debe corresponder al mismo hash CP municipal. La caché verifica productos y carga una partición distrital; la portada no lee todos los expedientes. Si falta la captura, aparecen instrucciones y el visor energético sigue disponible.
+
+Aceptación visual **bloqueada** en esta sesión: `reports/session_10/server_attempt.log` registra `PermissionError` al crear el socket. Revisar manualmente mapa, leyendas, superposición, clic/ficha CP y BU, filtros, exportaciones y continuidad del recorrido Madrid → distrito → celda; repetir con mapa urbano desactivado. La construcción de la nueva capa en AppTest no acredita su representación real.

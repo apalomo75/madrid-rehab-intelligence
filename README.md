@@ -1,6 +1,6 @@
 # Madrid Rehab Intelligence
 
-Estado vigente: **Madrid capital, 21 distritos seleccionables y 174 pruebas unittest/AppTest superadas**. Producto local `data/processed/session_7_final/`. [Expansión y cobertura](docs/sesion_7_expansion_madrid.md), [calidad municipal](docs/calidad_sesion_7.md). El piloto de Chamberí conserva sus indicadores. Sin eventos oficiales nuevos ni IPR global; validación visual pendiente por restricciones del sandbox.
+Estado vigente: **Madrid capital, 21 distritos y 229 pruebas unittest/AppTest superadas**. Sesión 10: 124.175 eventos administrativos reales; 112.783 vinculados a 49.855 parcelas. [Integración administrativa](docs/sesion_10_integracion_administrativa.md). Producto inmobiliario/energético preservado: `data/processed/session_7_final/`. [Expansión y cobertura](docs/sesion_7_expansion_madrid.md), [calidad municipal](docs/calidad_sesion_7.md). El piloto de Chamberí conserva sus indicadores. Sin IPR global; validación visual bloqueada por restricciones del sandbox.
 
 Proyecto de plataforma pública para explorar el potencial de rehabilitación residencial en Madrid.
 
@@ -186,3 +186,25 @@ PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -p test_public_sou
 PYTHONPATH=src .venv/bin/python -m madrid_rehab.official_sources urban_2019 --raw-dir data/raw/session_8_capture_03
 PYTHONPATH=src .venv/bin/python -m streamlit run src/madrid_rehab/app.py --server.address 127.0.0.1 --server.port 8512
 ```
+
+## Sesión 10: archivos administrativos reales
+
+Se integran los archivos locales de `Mapas Rehab`: 98.032 declaraciones, 11.498 licencias, 3.935 órdenes y 10.710 obligaciones ITE/IEE únicas según consulta 24/10/2026. Total: **124.175 eventos**, **112.783 vinculados inequívocamente a 49.855 parcelas**. El único PDF de subvenciones es una convocatoria, sin concesiones individuales. [Inventario, cobertura y ejecución](docs/sesion_10_integracion_administrativa.md), [puente NDP](docs/auditoria_matching_callejero.md), [diccionario](docs/diccionario_eventos_administrativos.md) y [calidad](docs/calidad_eventos_rehabilitacion.md).
+
+La captura administrativa vigente es `data/processed/administrative_events/session_10_final_01/`; la aplicación añade «Actividad y rehabilitación», filtros, series, exportación segura, capas de celda y eventos asociados a CP/BU. La evidencia sigue siendo de parcela; no diagnostica edificios ni acredita obras ejecutadas. `MADRID_REHAB_ADMIN_DIR` permite otra captura compatible con el mismo CP. No se regeneran productos anteriores.
+
+```bash
+# Python: dependencias ya incluidas en requirements.lock.
+.venv/bin/python -m pip install -r requirements.lock
+# Requisito PDF del sistema, si falta: sudo apt-get install poppler-utils
+# Cada reproducción requiere directorios nuevos:
+PYTHONPATH=src .venv/bin/python -m madrid_rehab.administrative --output-dir data/processed/administrative_events/replay_nuevo --report-dir reports/session_10/replay_nuevo
+PYTHONPATH=src .venv/bin/python -m madrid_rehab.administrative_audit --output-dir data/processed/administrative_profiles/replay_nuevo --report-dir reports/session_10/audit_nuevo
+PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -v
+PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -p test_administrative.py -v
+.venv/bin/ruff check src tests
+PYTHONPATH=src .venv/bin/python tests/benchmark_administrative.py --output reports/session_10/benchmark_nuevo.json
+PYTHONPATH=src .venv/bin/python -m streamlit run src/madrid_rehab/app.py --server.address 127.0.0.1 --server.port 8512
+```
+
+Sin compilación ni dependencias Python nuevas. Los originales quedan copiados por SHA-256; no se ejecutan fórmulas ni macros. Los datos e informes voluminosos están ignorados. La validación visual permanece bloqueada por permisos del socket; AppTest no sustituye WebGL/clic real. Véase [avance y resultados finales](docs/avance_sesion_10.md).

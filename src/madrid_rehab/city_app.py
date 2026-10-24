@@ -6,6 +6,7 @@ from pathlib import Path
 import altair as alt
 import streamlit as st
 
+from madrid_rehab.administrative_view import render_activity
 from madrid_rehab.city_maps import change_district, district_selection, overview_deck
 from madrid_rehab.city_store import load_overview, signature
 from madrid_rehab.district_view import render_district
@@ -202,8 +203,13 @@ def main():
         f"{municipal['record_parcel_pairs']:,} pares registro/parcela. {municipal['unassigned_parcel_references']} referencias sin distrito único. "
         "Datos observados del paquete municipal: no garantizan cobertura de todos los edificios o certificados existentes."
     )
-    map_tab, comparison_tab, quality_tab = st.tabs(
-        ["Madrid · mapa general", "Comparar distritos", "Cobertura y calidad"]
+    map_tab, comparison_tab, quality_tab, activity_tab = st.tabs(
+        [
+            "Madrid · mapa general",
+            "Comparar distritos",
+            "Cobertura y calidad",
+            "Actividad y rehabilitación",
+        ]
     )
     with map_tab:
         urban = st.toggle("Mapa urbano municipal · requiere internet", value=False)
@@ -232,7 +238,7 @@ def main():
     with quality_tab:
         if not overview["manifest"].get("event_inputs"):
             st.info(
-                "ITE/IEE y subvenciones: dimensiones pendientes, sin registros oficiales nuevos integrados."
+                "La captura energética histórica no incorpora eventos. Consulta las fuentes administrativas locales en «Actividad y rehabilitación»; las concesiones siguen pendientes."
             )
         else:
             st.info(
@@ -246,6 +252,9 @@ def main():
             "Una referencia con filas CP en distintos distritos permanece residual. "
             "Mallas de 500 m son subdivisiones métricas exploratorias, no barrios administrativos."
         )
+
+    with activity_tab:
+        render_activity()
 
 
 if __name__ == "__main__":

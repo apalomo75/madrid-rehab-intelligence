@@ -7,6 +7,8 @@ import os
 import pandas as pd
 import streamlit as st
 
+from madrid_rehab.administrative_view import render_activity, render_parcel_events
+
 from .analysis_view import render_analysis
 from .app import detail
 from .city_maps import (
@@ -136,6 +138,7 @@ def parcel_detail(row, certificates, links):
         st.info("Sin registros vinculados en esta captura; no demuestra ausencia real.")
     else:
         st.dataframe(display_certificate_table(full), hide_index=True, width="stretch")
+    render_parcel_events(row.parcel_ref14, getattr(row, "district_code", None))
     st.markdown("**D. Calidad y limitaciones**")
     st.caption(f"Captura CP: {row.captured_at}; fuente: {row.source_date}")
     st.link_button("Fuente oficial CP", row.source_url)
@@ -166,7 +169,9 @@ def render_district(root, code, overview):
     )
     name = data["manifest"]["district_name"]
     st.subheader(f"Distrito {code} · {name}")
-    map_tab, analysis_tab = st.tabs(["Mapa y ficha", "Análisis del distrito"])
+    map_tab, analysis_tab, activity_tab = st.tabs(
+        ["Mapa y ficha", "Análisis del distrito", "Actividad y rehabilitación"]
+    )
     with st.sidebar:
         st.header("Ubicación")
         st.button("Ver distrito completo", on_click=district_home, args=(code,))
@@ -403,6 +408,8 @@ def render_district(root, code, overview):
                     district_name=name,
                     clear_callback=clear_city_selection,
                 )
+                chosen_building = buildings[buildings.building_id.eq(unit[3:])].iloc[0]
+                render_parcel_events(chosen_building.parcel_ref14, code)
             elif unit and unit.startswith("cp:"):
                 parcel_detail(parcels[parcels.record_id.eq(unit[3:])].iloc[0], certificates, links)
             elif zone is not None:
@@ -418,3 +425,6 @@ def render_district(root, code, overview):
         )
     with analysis_tab:
         render_analysis(root / "districts" / code, key_prefix="district-" + code)
+
+    with activity_tab:
+        render_activity(code, parcels, zone)
