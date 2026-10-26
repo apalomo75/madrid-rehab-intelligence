@@ -1,0 +1,13 @@
+{
+  "reviewed_on": "2026-10-26",
+  "new_real_inspections": 0,
+  "sources": [
+    {"id":"rec", "url":"https://servpub.madrid.es/GITEP_WBFICHA/SGiteCons", "status":"public_individual_documented", "local_access":"dns_failure", "method_observed_by_user":"POST", "unverified_parameters":{"opcion":"6","origen":"I","ndp":"11140360"}, "automated_query_permission":"unknown", "batch":"not_authorized", "reuse":"unverified", "new_records":0},
+    {"id":"rec_service", "url":"https://sede.madrid.es/portal/site/tramites/menuitem.62876cb64654a55e2dbd7003a8a409a0/?vgnextoid=8fe1b4173fd61110VgnVCM2000000c205a0aRCRD", "status":"available_documentation", "scope":"public_results_vs_legitimate_interest_for_restricted_information"},
+    {"id":"rieecm", "url":"https://www.rieecm.es/portal/home", "status":"public_individual_indexed_direct_timeout", "download_dataset":"not_verified", "api":"not_verified", "reuse":"restricted_or_requires_permission"},
+    {"id":"rieecm_legal", "url":"https://www.rieecm.es/portal/home/aviso_legal", "status":"available", "commercial_redistribution":"requires_permission", "contact":"inforiee@madrid.org"},
+    {"id":"regional_iee", "url":"https://www.comunidad.madrid/vivienda/informe-evaluacion-edificios", "status":"available_documentation", "download_dataset":"not_verified"},
+    {"id":"regional_catalogue", "url":"https://www.comunidad.madrid/gobierno/datos-abiertos", "status":"pending", "evidence":"RIEECM listed under Próximos conjuntos de datos"},
+    {"id":"budget_2026", "url":"https://www.comunidad.madrid/sites/default/files/doc/hacienda/2026-proyecto-libro-16-transportes.pdf", "status":"planned_integration_documented", "publication_proven":false}
+  ]
+}

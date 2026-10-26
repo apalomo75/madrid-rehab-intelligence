@@ -304,10 +304,14 @@ class RealProductsTests(unittest.TestCase):
             )
             app = AppTest.from_file(str(path), default_timeout=60).run()
             self.assertFalse(app.exception)
-            self.assertEqual(len(app.selectbox[0].options), 180)
+            self.assertEqual(len(app.selectbox[0].options), 6)
             app.selectbox[0].set_value("28065").run()
             self.assertFalse(app.exception)
-            self.assertTrue(any("sin procesar" in item.value for item in app.info))
+            self.assertEqual(app.metric[2].value, "6")
+            self.assertTrue(
+                any("Cobertura catastral parcial" in item.value for item in app.caption)
+            )
+            self.assertTrue(any(item.label == "Zona de exploración" for item in app.selectbox))
             self.assertTrue(any(" / 7532" in item.value for item in app.metric))
             with (
                 patch.dict(os.environ, {"MADRID_REHAB_PUBLIC": "1"}),

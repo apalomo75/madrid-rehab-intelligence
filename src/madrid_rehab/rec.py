@@ -1,6 +1,6 @@
 """Parser local experimental REC. No cliente de red ni autorización de publicación.
 
-Reglas por etiquetas y cabeceras; no validado contra una ficha REC real.
+Reglas por etiquetas y cabeceras; contraste local real documentado en docs/rec_real.md.
 Los campos no reconocidos y los bloques originales permanecen en source_records.
 """
 
@@ -11,7 +11,7 @@ from html.parser import HTMLParser
 
 from .administrative import key
 
-SCHEMA = "rec-local-v1"
+SCHEMA = "rec-local-v2"
 FIELDS = {
     "DIRECCION": "address_raw",
     "DIRECCION DEL ACCESO": "address_raw",
@@ -46,7 +46,37 @@ FIELDS = {
     "ANTECEDENTES": "antecedents_raw",
     "SUBSANACION": "remediation_raw",
 }
+FIELDS.update(
+    {
+        "ACCESO": "address_raw",
+        "TIPO ACCESO": "access_type_raw",
+        "AMBITO PG97": "planning_area_raw",
+        "PROTECCION": "protection_raw",
+        "ANO DE CONSTRUCCION A EFECTOS DE LA INSPECCION": "construction_year_raw",
+        "ANO DE 1ª OBLIGACION": "first_obligation_year_raw",
+        "ANO PROXIMA I.T.E.": "next_ite_raw",
+        "FECHA MAXIMA PRESENTACION I.E.E.": "iee_deadline_raw",
+        "Nº DE EXPEDIENTE": "case_reference",
+        "FECHA PRESENTACION": "presentation_date_raw",
+        "Nº DE REGISTRO": "registration_raw",
+        "PARCIAL/TOTAL": "scope_raw",
+        "CAUSA/S DICTAMEN DESFAVORABLE": "deficiency_raw",
+        "EXPEDIENTE DE ORDEN DE EJECUCION/SEGUIMIENTO DE LAS OBRAS": "followup_case_raw",
+        "TIPO INCUMPLIMIENTO": "noncompliance_raw",
+        "ESTADO": "status_raw",
+        "EXPEDIENTE ANTECEDENTE": "antecedents_raw",
+        "FECHA RESOLUCION": "resolution_date_raw",
+        "FEC. RESOLUCION": "resolution_date_raw",
+        "DEFICIENCIAS SUBSANADAS": "remediation_raw",
+    }
+)
 ACCESS_FIELDS = {
+    "access_type_raw",
+    "planning_area_raw",
+    "protection_raw",
+    "first_obligation_year_raw",
+    "next_ite_raw",
+    "iee_deadline_raw",
     "address_raw",
     "postal_code",
     "district_raw",
@@ -58,7 +88,7 @@ CASE_RE = r"\b\d{3}/\d{4}/\d+\b"
 
 
 def label(value):
-    return FIELDS.get(key(value).rstrip(" :."))
+    return {key(k).rstrip(" :."): v for k, v in FIELDS.items()}.get(key(value).rstrip(" :."))
 
 
 class Rows(HTMLParser):
@@ -125,7 +155,9 @@ class Rows(HTMLParser):
 def administrative_state(opinion, status, remediation=""):
     """Derivación reversible; nunca equipara archivo/terminación con obras."""
     opinion, status, remediation = key(opinion), key(status), key(remediation)
-    pending = bool(re.fullmatch(r"PENDIENTE (?:DE )?SUBSANACION(?: DE DEFICIENCIAS)?[. ]*", status))
+    pending = bool(
+        re.fullmatch(r"PENDIENTE (?:DE )?SUBSANACION(?: (?:DE )?DEFICIENCIAS)?[. ]*", status)
+    )
     resolved = remediation in {"SUBSANACION ACREDITADA", "DEFICIENCIAS SUBSANADAS"}
     if (pending and resolved) or (opinion == "FAVORABLE" and pending):
         return "contradictory"
@@ -203,7 +235,8 @@ def parse_rec(content, *, source_id, observed_at, synthetic=False, encoding=None
             blocks.append(current)
             current = {}
 
-    for section, cells in parser.rows:
+    field_evidence = []
+    for row_index, (section, cells) in enumerate(parser.rows):
         if section != section_before:
             flush()
             headers = None
@@ -241,6 +274,9 @@ def parse_rec(content, *, source_id, observed_at, synthetic=False, encoding=None
         else:
             warnings.append("unrecognized_row")
         for field, value in pairs:
+            field_evidence.append(
+                dict(row_index=row_index, section_raw=section, field=field, value=value)
+            )
             if field in ACCESS_FIELDS:
                 if field in access and access[field] != value:
                     warnings.append("conflicting_" + field)
@@ -276,7 +312,12 @@ def parse_rec(content, *, source_id, observed_at, synthetic=False, encoding=None
             )
         row = dict(provenance, **block, case_id=case_id, access_id=access["access_id"])
         flags = []
-        for field in ["presentation_date_raw", "opinion_date_raw", "event_date_raw"]:
+        for field in [
+            "presentation_date_raw",
+            "opinion_date_raw",
+            "event_date_raw",
+            "resolution_date_raw",
+        ]:
             parsed, flag = parse_date(row.get(field, ""))
             row[field.removesuffix("_raw")] = parsed
             if flag:
@@ -297,7 +338,7 @@ def parse_rec(content, *, source_id, observed_at, synthetic=False, encoding=None
         if row["record_id"] in seen:
             continue
         seen.add(row["record_id"])
-        kind = key(block.get("inspection_type", ""))
+        kind = key(block.get("inspection_type", "")).replace(".", "")
         section = key(block.get("section_raw", ""))
         if not kind and section in {"ITE", "IEE"}:
             kind = section
@@ -318,12 +359,23 @@ def parse_rec(content, *, source_id, observed_at, synthetic=False, encoding=None
         else:
             row["event_kind"] = (
                 "coercive_fine"
-                if "MULTA COERCITIVA" in section
+                if "MULTA COERCITIVA" in section or "MULTAS COERCITIVAS" in section
                 else "execution_order"
                 if "ORDEN" in section
                 else "administrative_event"
             )
             events.append(row)
+        for followup in re.findall(CASE_RE, block.get("followup_case_raw", "")):
+            followup_id = ident("Ayuntamiento de Madrid", followup)
+            cases.setdefault(
+                followup_id,
+                dict(
+                    case_id=followup_id, case_reference=followup, authority="Ayuntamiento de Madrid"
+                ),
+            )
+            relations.append(
+                dict(case_id=case_id, related_case_id=followup_id, relation="execution_followup")
+            )
         for antecedent in re.findall(CASE_RE, block.get("antecedents_raw", "")):
             ancestor_id = ident("Ayuntamiento de Madrid", antecedent)
             cases.setdefault(
@@ -348,6 +400,7 @@ def parse_rec(content, *, source_id, observed_at, synthetic=False, encoding=None
             dict(
                 provenance,
                 encoding=encoding,
+                field_evidence=field_evidence,
                 rows=parser.rows,
                 blocks=blocks,
                 warnings=sorted(set(warnings)),

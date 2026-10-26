@@ -163,8 +163,24 @@ def main():
         </style>""",
         unsafe_allow_html=True,
     )
-    view = st.sidebar.radio("Navegación", ["Madrid capital", "Comunidad de Madrid — Subvenciones"])
-    if view == "Comunidad de Madrid — Subvenciones":
+    if os.environ.get("MADRID_REHAB_DEMO", "0") == "1":
+        mode = st.sidebar.radio("Modo", ["Demostración", "Analista"])
+        if mode == "Demostración":
+            from .demo import render
+
+            render()
+            return
+    view = st.sidebar.radio(
+        "Navegación",
+        ["Explorar municipios", "Madrid capital", "Comunidad de Madrid · Municipios y cobertura"],
+        key="city_navigation",
+    )
+    if view == "Explorar municipios":
+        from .demo import render
+
+        render()
+        return
+    if view == "Comunidad de Madrid · Municipios y cobertura":
         from .regional_view import render_regional
 
         render_regional()

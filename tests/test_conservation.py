@@ -442,7 +442,8 @@ class RealConservationTests(unittest.TestCase):
         )
         app.run(timeout=30)
         self.assertFalse(app.exception)
-        self.assertTrue(any("No constan inspecciones" in i.value for i in app.info))
+        self.assertTrue(any("Consulta integrada no habilitada" in i.value for i in app.caption))
+        self.assertEqual(len(app.get("link_button")), 1)
         app.text_input[0].set_value("0000000ZZ0000Z").run(timeout=30)
         self.assertFalse(app.exception)
 

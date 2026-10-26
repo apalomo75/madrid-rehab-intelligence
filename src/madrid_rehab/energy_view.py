@@ -163,11 +163,11 @@ def render_energy_parcel(code, ref):
     st.markdown("**Información energética regional**")
     path = f"municipalities/{code}/links.parquet"
     if not (root_path() / path).exists():
-        st.info("No constan certificados vinculados en las fuentes integradas")
+        st.info("No disponible en las fuentes integradas")
         return
     links = read(path, ref)
     if links.empty:
-        st.info("No constan certificados vinculados en las fuentes integradas")
+        st.info("No disponible en las fuentes integradas")
         return
     columns = [
         "certificate_id",

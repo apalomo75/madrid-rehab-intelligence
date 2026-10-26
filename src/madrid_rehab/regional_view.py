@@ -12,9 +12,9 @@ import streamlit as st
 from pyproj import Transformer
 from shapely.ops import transform
 
-from .grants_view import NOTICE, exposure_enabled, read_view, safe_export
+from .grants_view import NOTICE, read_view, safe_export
 from .ingest import digest
-from .regional_cadastre import DEFAULT, verify_partition
+from .regional_cadastre import DEFAULT, verify_partition as verify_legacy_partition
 from .municipal_boundaries import DEFAULT as OFFICIAL_BOUNDARIES
 from .territorial_prtr import DEFAULT as TERRITORIAL_PRTR
 
@@ -26,8 +26,13 @@ def money(value):
 def token(root):
     root = Path(root)
     paths = [root / "manifest.json", *sorted(root.glob("*.parquet"))]
+    if (
+        root.name in {"28065", "28092", "28074", "28007", "28005"}
+        and (root.parent / "manifest.json").exists()
+    ):
+        paths.append(root.parent / "manifest.json")
     return tuple(
-        (p.name, p.stat().st_size, p.stat().st_mtime_ns, p.stat().st_ctime_ns) for p in paths
+        (str(p), p.stat().st_size, p.stat().st_mtime_ns, p.stat().st_ctime_ns) for p in paths
     )
 
 
@@ -62,7 +67,13 @@ def load_decisions(root, signature, source_manifest_sha256=None):
     manifest = json.loads((root / "manifest.json").read_text())
     if (
         source_manifest_sha256 is not None
-        and manifest["source_manifest_sha256"] != source_manifest_sha256
+        and manifest.get(
+            "source_manifest_sha256",
+            manifest.get("inputs", {}).get(
+                "data/processed/grants/session_11_final_03/grant_source_manifest.json"
+            ),
+        )
+        != source_manifest_sha256
     ):
         raise ValueError("Decisión territorial de otra captura PRTR")
     for name, sha in manifest["outputs"].items():
@@ -77,11 +88,64 @@ def partition_path(code):
     return (
         Path(
             os.environ.get(
-                "MADRID_REHAB_CADASTRE_DIR", "data/processed/cadastre/session_12_2_pilot_01"
+                "MADRID_REHAB_CADASTRE_DIR",
+                "data/processed/cadastre/session_12_2_partial_validated_01",
             )
         )
         / code
     )
+
+
+def verify_partition(root):
+    """Explicit adapter for accepted partial products; legacy validation stays strict."""
+    root = Path(root)
+    manifest = json.loads((root / "manifest.json").read_text())
+    if manifest.get("version") != "partial-cadastre-v1":
+        return verify_legacy_partition(root)
+    if (
+        manifest.get("validation_status") != "partial_validated"
+        or manifest["quality"]["municipality_code"] != root.name
+        or not manifest.get("independent_bu")
+        or manifest.get("cp_bu_relations_created") is not False
+    ):
+        raise ValueError("Contrato parcial incompatible")
+    parent = json.loads((root.parent / "manifest.json").read_text())
+    if digest(root / "manifest.json") != parent["outputs"][root.name + "/manifest.json"]:
+        raise ValueError("Manifiesto municipal alterado")
+    for name, sha in manifest["outputs"].items():
+        if digest(root / name) != sha:
+            raise ValueError("Producto parcial alterado")
+    for path, sha in manifest["inputs"].items():
+        if digest(path) != sha:
+            raise ValueError("Original parcial alterado")
+    counts = {}
+    for kind in ("cp", "bu"):
+        frame = pd.read_parquet(
+            root / f"{kind}.parquet",
+            columns=["selection_status", "municipality_code", "usable_geometry"],
+        )
+        if not (
+            frame.selection_status.eq("accepted")
+            & frame.municipality_code.eq(root.name)
+            & frame.usable_geometry
+        ).all():
+            raise ValueError("Vista aceptada contiene objetos no utilizables")
+        counts[kind] = len(frame)
+        if len(frame) != manifest["quality"][kind]["accepted"]:
+            raise ValueError("Recuento parcial incompatible")
+    return {
+        **manifest,
+        "cp_rows": counts["cp"],
+        "bu_objects": counts["bu"],
+        "cp_usable": counts["cp"],
+        "bu_usable": counts["bu"],
+    }
+
+
+def integrated_codes():
+    from .municipal_navigation import covered_municipalities
+
+    return set(covered_municipalities().municipality_code)
 
 
 def regional_root_path():
@@ -95,6 +159,11 @@ def regional_root_path():
         if digest(root / "manifest.json") != record["manifest_sha256"]:
             raise ValueError("Captura PRTR activa alterada")
         return root
+    partial = partition_path("unused").parent
+    if (partial / "manifest.json").exists():
+        meta = json.loads((partial / "manifest.json").read_text())
+        if meta.get("version") == "partial-cadastre-v1":
+            return partial
     return TERRITORIAL_PRTR
 
 
@@ -136,6 +205,17 @@ def municipality_changed(state, key):
         state["regional_previous_municipality"] = key
 
 
+def parcel_map_changed():
+    event = st.session_state.get("regional-map", {})
+    objects = event.get("selection", {}).get("objects", {})
+    for rows in objects.values():
+        if rows:
+            ref = rows[0].get("properties", {}).get("id")
+            if ref:
+                st.session_state["regional_parcel"] = ref
+                return
+
+
 @st.cache_data(max_entries=3, show_spinner=False)
 def map_parcels(root, signature, x, y, zoom):
     if token(root) != signature or not 10 <= zoom <= 19:
@@ -156,7 +236,7 @@ def map_parcels(root, signature, x, y, zoom):
     return frame.iloc[:1500], len(frame) > 1500
 
 
-def geometry_deck(frame, id_column, zoom=8):
+def geometry_deck(frame, id_column, zoom=8, selected=""):
     project = Transformer.from_crs(25830, 4326, always_xy=True).transform
     features = []
     for row in frame.itertuples():
@@ -170,7 +250,9 @@ def geometry_deck(frame, id_column, zoom=8):
                 geometry=sh.geometry.mapping(geom),
                 properties={
                     "id": str(getattr(row, id_column)),
+                    "unit_id": str(getattr(row, id_column)),
                     "name": getattr(row, "name", str(getattr(row, id_column))),
+                    "selected": str(getattr(row, id_column)) == selected,
                     "color": [35, 130, 155, 100]
                     if id_column != "municipality_code"
                     or not getattr(row, "cp_ready", row.municipality_code == "28079")
@@ -185,9 +267,12 @@ def geometry_deck(frame, id_column, zoom=8):
             pdk.Layer(
                 "GeoJsonLayer",
                 {"type": "FeatureCollection", "features": features},
+                id="regional-geometries",
                 pickable=True,
                 get_fill_color="properties.color",
-                get_line_color=[25, 70, 90],
+                get_line_color="properties.selected ? [20, 80, 255] : [25, 70, 90]",
+                get_line_width="properties.selected ? 4 : 1",
+                line_width_units="pixels",
                 line_width_min_pixels=1,
             )
         ],
@@ -197,130 +282,26 @@ def geometry_deck(frame, id_column, zoom=8):
     )
 
 
+def open_madrid():
+    st.session_state["city_navigation"] = "Madrid capital"
+
+
 def render_municipality(code, name):
-    from .energy_view import render_energy_region
+    from .municipal_navigation import render_explorer
 
-    render_energy_region(code)
-    st.markdown(f"**{name} · Parcelas y objetos BU**")
+    st.button(
+        "Ver municipios en el mapa",
+        key="regional_territories",
+        on_click=lambda: st.session_state.update(municipal_show_territories=True),
+    )
+    if st.session_state.get("municipal_show_territories"):
+        from .municipal_navigation import render_territories
+
+        render_territories("regional_municipality")
+    else:
+        render_explorer(code, name)
     if code == "28079":
-        st.info(
-            "Catastro, CEEE y eventos disponibles en «Madrid capital», con sus 21 distritos y fichas completas."
-        )
-        return
-    root = partition_path(code)
-    if not (root / "manifest.json").exists():
-        st.info("CP/BU sin procesar. No hay ficha catastral disponible para este municipio.")
-        return
-    try:
-        sig = token(root)
-        refs = parcel_index(str(root), sig).parcel_ref14.drop_duplicates().sort_values().tolist()
-        if not refs:
-            st.warning("No hay parcelas con referencia y geometría utilizables en esta captura.")
-            return
-        metadata = partition_info(str(root), sig)
-        if metadata.get("quality_status") == "review_required":
-            st.warning(
-                f"Objetos con incidencias conservadas: {metadata.get('cp_issues', 0)} CP y {metadata.get('bu_issues', 0)} BU. Los no utilizables se excluyen del cruce y del mapa."
-            )
-        ref = st.selectbox("Parcela catastral · RC14", refs, key="regional_parcel")
-        from .energy_view import render_energy_parcel
-
-        render_energy_parcel(code, ref)
-        cp = parcel_objects(str(root), sig, ref, "cp")
-        bu = parcel_objects(str(root), sig, ref, "bu")
-        zoom = st.slider("Detalle del mapa municipal", 10, 19, 17)
-        usable_cp = cp[cp.usable_geometry] if "usable_geometry" in cp else cp
-        if usable_cp.empty:
-            st.warning("La selección no tiene geometría utilizable; consultar las incidencias.")
-            return
-        center = sh.from_wkt(usable_cp.geometry_wkt.iloc[0]).representative_point()
-        nearby, truncated = map_parcels(str(root), sig, center.x, center.y, zoom)
-        st.pydeck_chart(geometry_deck(nearby, "parcel_ref14", zoom), key="regional-map")
-        if truncated:
-            st.caption(
-                "Límite de 1.500 parcelas visibles; aumenta el detalle o selecciona otra RC14."
-            )
-        usable_bu = bu[bu.usable_geometry] if "usable_geometry" in bu else bu
-        if st.checkbox("Mostrar objetos BU de la parcela") and not usable_bu.empty:
-            st.pydeck_chart(geometry_deck(usable_bu, "building_id", 18))
-        st.write(
-            f"{len(cp)} objetos CP · {len(bu)} objetos BU. No equivalen a edificios físicos o viviendas."
-        )
-        with st.expander("Información catastral de la selección"):
-            st.dataframe(cp.drop(columns=["geometry_wkt"]), hide_index=True)
-            st.dataframe(bu.drop(columns=["geometry_wkt"]), hide_index=True)
-        if exposure_enabled():
-            regional = regional_root_path()
-            if (regional / "manifest.json").exists():
-                manifest = json.loads((regional / "manifest.json").read_text())
-                path = regional / "grant_parcel_links.parquet"
-                if digest(path) != manifest["outputs"][path.name]:
-                    raise ValueError("Relaciones PRTR alteradas")
-                scope = (
-                    "geographic_municipality_code"
-                    if "geographic_municipality_code" in ds.dataset(path).schema.names
-                    else "municipality_code"
-                )
-                linked = pd.read_parquet(
-                    path, filters=[("parcel_ref14", "==", ref), (scope, "==", code)]
-                )
-                confirmed = linked[
-                    linked.match_status.isin(
-                        ["confirmed", "confirmed_reference", "confirmed_historical_madrid"]
-                    )
-                ]
-                st.write(
-                    f"{confirmed.expediente_id.nunique()} expedientes PRTR con relación catastral confirmada."
-                )
-                candidate_path = regional / "grant_spatial_candidates.parquet"
-                if candidate_path.exists():
-                    if digest(candidate_path) != manifest["outputs"][candidate_path.name]:
-                        raise ValueError("Candidatos PRTR alterados")
-                    candidates = pd.read_parquet(
-                        candidate_path,
-                        filters=[
-                            ("parcel_ref14", "==", ref),
-                            ("geographic_municipality_code", "==", code),
-                        ],
-                    )
-                    linked = pd.concat([linked, candidates], ignore_index=True)
-                if not linked.empty:
-                    data = read_view()
-                    if data is not None:
-                        details = linked[["expediente_id", "match_status"]].merge(
-                            data[1][["expediente_id", "programa", "importe_concedido"]],
-                            on="expediente_id",
-                            validate="many_to_one",
-                        )
-                        details["match_status"] = details.match_status.replace(
-                            {
-                                "confirmed": "Referencia y geometría concordantes",
-                                "confirmed_reference": "Referencia exacta; sin contraste espacial",
-                                "confirmed_historical_madrid": "Confirmación histórica Madrid",
-                                "spatial_candidate": "Posible por posición; sin confirmación documental",
-                                "ambiguous_spatial": "Posición ambigua",
-                                "ambiguous": "Referencia ambigua",
-                                "contradictory": "Contradicción",
-                                "not_found": "Referencia no encontrada",
-                                "unusable_cp": "Parcela en revisión",
-                            }
-                        )
-                        st.dataframe(
-                            details.rename(
-                                columns={
-                                    "expediente_id": "Expediente",
-                                    "match_status": "Evidencia",
-                                    "programa": "Programa",
-                                    "importe_concedido": "Concesión del expediente (€)",
-                                }
-                            ),
-                            hide_index=True,
-                        )
-                        st.caption(
-                            "Importe del expediente, sin reparto entre parcelas. Esta tabla no debe sumarse entre fichas."
-                        )
-    except (OSError, KeyError, ValueError) as exc:
-        st.error(f"Partición no verificable: {exc}")
+        st.button("Abrir fichas de Madrid capital · NDP y REC", on_click=open_madrid)
 
 
 def render_regional():
@@ -347,55 +328,37 @@ def render_regional():
             "Municipios con límite oficial validado",
             0 if municipalities is None else len(municipalities),
         )
-        cp_codes = {"28079"}
-        for pilot in ["28065", "28092", "28074", "28007", "28005"]:
-            path = partition_path(pilot)
-            if (path / "manifest.json").exists():
-                info = partition_info(str(path), token(path))
-                if (
-                    info.get("cp_usable", info["cp_rows"]) > 0
-                    and info.get("bu_usable", info["bu_objects"]) > 0
-                ):
-                    cp_codes.add(pilot)
+        cp_codes = integrated_codes()
         c.metric("Municipios con CP/BU integrado", len(cp_codes))
         if municipalities is None:
             st.warning(
                 "Inventario Catastro de 179 municipios. Catálogo INE completo y límites pendientes de descarga; no hay clasificación espacial regional validada."
             )
-            names = resources.set_index("cadastre_code").cadastre_name.to_dict()
+            from .municipal_navigation import covered_municipalities
+
+            names = covered_municipalities().set_index("municipality_code").name.to_dict()
             selected = st.selectbox(
-                "Municipio · identificador Catastro, INE pendiente",
-                ["all"] + sorted(names, key=names.get),
-                format_func=lambda key: "Comunidad de Madrid · toda la captura"
-                if key == "all"
-                else f"{names[key]} · Catastro {key}",
+                "Municipio",
+                sorted(cp_codes, key=names.get),
+                format_func=lambda key: names[key],
                 key="regional_municipality",
+                on_change=lambda: st.session_state.update(municipal_show_territories=False),
             )
-            code = "28079" if selected == "28900" else None
-            name = names.get(selected, "Comunidad de Madrid")
+            code, name = selected, names[selected]
         else:
             municipalities = municipalities.copy()
             municipalities["cp_ready"] = municipalities.municipality_code.isin(cp_codes)
             names = municipalities.set_index("municipality_code")["name"].to_dict()
             selected = st.selectbox(
-                "Municipio · código INE",
-                ["all"] + sorted(names, key=names.get),
-                format_func=lambda key: "Comunidad de Madrid"
-                if key == "all"
-                else f"{names[key]} · {key}",
+                "Municipio",
+                sorted(cp_codes, key=names.get),
+                format_func=lambda key: names[key],
                 key="regional_municipality",
+                on_change=lambda: st.session_state.update(municipal_show_territories=False),
             )
             code, name = (
                 (None if selected == "all" else selected),
                 names.get(selected, "Comunidad de Madrid"),
-            )
-            st.pydeck_chart(
-                geometry_deck(
-                    municipalities
-                    if code is None
-                    else municipalities[municipalities.municipality_code.eq(code)],
-                    "municipality_code",
-                )
             )
             boundary_metadata = json.loads((boundary_root / "manifest.json").read_text())
             st.caption(

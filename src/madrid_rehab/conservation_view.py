@@ -72,7 +72,13 @@ def read_verified(root, relative, token, ref, columns=None):
         != json.loads((city / "manifest.json").read_text())["inputs"]["parcels_audited"]
     ):
         raise ValueError("Captura de conservación con Catastro incompatible")
-    frame = pd.read_parquet(root / relative, filters=[("parcel_ref14", "==", ref)], columns=columns)
+    filters = [("parcel_ref14", "==", ref)]
+    if relative == "conservation_parcel_links.parquet":
+        filters = [
+            [(field, "==", ref)]
+            for field in ("parcel_ref14", "confirmed_parcel_ref14", "parcel_candidate")
+        ]
+    frame = pd.read_parquet(root / relative, filters=filters, columns=columns)
     if signature(root, relative) != token:
         raise ValueError("Captura cambió durante lectura")
     return frame
@@ -85,7 +91,7 @@ def parcel_evidence(ref, product="events", municipality="28079"):
         return None
     if not re.fullmatch(r"[0-9]{7}[A-Z]{2}[0-9]{4}[A-Z]", ref):
         raise ValueError("Referencia CP no válida")
-    if product not in {"events", "profiles", "accesses"}:
+    if product not in {"events", "profiles", "accesses", "rec_accesses"}:
         raise ValueError("Producto no permitido")
     root = root_path()
     if not (root / "manifest.json").exists():
@@ -99,7 +105,11 @@ def parcel_evidence(ref, product="events", municipality="28079"):
         != json.loads((city / "manifest.json").read_text())["inputs"]["parcels_audited"]
     ):
         raise ValueError("Catastro incompatible con conservación")
-    relative = f"parcels/{ref[:2]}/{product}.parquet"
+    relative = (
+        "conservation_parcel_links.parquet"
+        if product == "rec_accesses"
+        else f"parcels/{ref[:2]}/{product}.parquet"
+    )
     if not (root / relative).exists():
         return pd.DataFrame()
     return read_verified(str(root), relative, signature(root, relative), ref)
@@ -112,17 +122,17 @@ def display_events(frame):
 
 
 def render_conservation_parcel(ref, municipality="28079"):
+    from .rec_view import render_rec_parcel
+
+    render_rec_parcel(ref, municipality)
     if not enabled():
         return
     st.markdown("**Conservación e inspecciones**")
-    st.info("No constan inspecciones vinculadas en las fuentes integradas")
-    st.caption(
-        "REC: sin cobertura individual integrada. El parser local está pendiente de validación con fichas reales."
-    )
+    st.caption("Captura histórica de conservación independiente de la consulta REC bajo demanda.")
     try:
         frame = parcel_evidence(ref, municipality=municipality)
         if frame is None:
-            st.caption("Sin captura de conservación individual disponible para este municipio.")
+            st.info("No disponible en las fuentes integradas")
             return
         frame = frame[frame.is_conservation_evidence] if not frame.empty else frame
         if not frame.empty:
@@ -135,7 +145,15 @@ def render_conservation_parcel(ref, municipality="28079"):
                 "Accesos municipales con relación documental a esta parcela; no identifican edificio físico."
             )
             st.dataframe(
-                accesses[["ndp", "street", "number_raw", "qualifier_raw", "link_status"]],
+                accesses[["ndp", "street", "number_raw", "qualifier_raw", "link_status"]].rename(
+                    columns={
+                        "ndp": "Identificador de portal",
+                        "street": "Calle",
+                        "number_raw": "Número",
+                        "qualifier_raw": "Complemento",
+                        "link_status": "Calidad del vínculo",
+                    }
+                ),
                 hide_index=True,
             )
         profile = parcel_evidence(ref, "profiles", municipality)

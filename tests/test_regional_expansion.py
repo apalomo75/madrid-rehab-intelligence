@@ -455,7 +455,9 @@ class CadastreTests(unittest.TestCase):
             with patch.dict(os.environ, {"MADRID_REHAB_CADASTRE_DIR": str(base / "out")}):
                 app = AppTest.from_file(str(path), default_timeout=30).run()
                 self.assertFalse(app.exception)
-                app.checkbox[0].set_value(True).run()
+                next(x for x in app.radio if x.label == "Objetos catastrales").set_value(
+                    "Objetos BU independientes"
+                ).run()
                 self.assertFalse(app.exception)
 
     def test_cached_download_cp_bu_no_network(self):
@@ -640,13 +642,12 @@ class RealSnapshots(unittest.TestCase):
             ):
                 app = AppTest.from_file(str(path), default_timeout=30).run()
                 self.assertFalse(app.exception)
-                self.assertEqual(len(app.selectbox[0].options), 180)
+                self.assertEqual(len(app.selectbox[0].options), 6)
                 app.selectbox[0].set_value("28065").run()
                 self.assertFalse(app.exception)
-                self.assertTrue(any("pendiente de verificación" in item.value for item in app.info))
-                app.selectbox[0].set_value("28900").run()
+                self.assertTrue(any(x.label == "Zona de exploración" for x in app.selectbox))
+                app.selectbox[0].set_value("28079").run()
                 self.assertFalse(app.exception)
-                self.assertIn("3805", app.metric[-2].value)
 
     def test_app_filters_and_public_no_prtr(self):
         with tempfile.TemporaryDirectory() as temp:

@@ -1,8 +1,21 @@
 # Madrid Rehab Intelligence
 
+Corrección de navegación regional: [productos, cobertura y pruebas](docs/correccion_navegacion_regional.md). La navegación regional activa los cinco pilotos con CP/BU aceptado parcial, además de Madrid; mantiene la consulta territorial de los otros 173 municipios.
+
+**Sesión 15:** demostración local opcional con búsqueda por municipio/RC14, tres casos reales y ficha conjunta. **REC: consulta individual documentada, POST/NDP sin reproducir y cero dictámenes integrados**; no hay permiso de extracción masiva. MVP parcial y revisión visual pendiente por bloqueo de sockets/Chromium. [Resultados y validación](docs/sesion_15_rec_y_demo.md), [ejecutar y presentar](docs/demo_uci.md), [acceso REC](docs/rec_acceso_y_escala.md), [licencias](docs/licencias_demo.md). Las cifras y estados de secciones anteriores son históricos.
+
+```bash
+MADRID_REHAB_DEMO=1 MADRID_REHAB_OFFLINE=1 PYTHONPATH=src .venv/bin/python -m streamlit run src/madrid_rehab/app.py --server.address 127.0.0.1 --server.port 8512 --server.headless true --browser.gatherUsageStats false
+PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -p test_demo.py -v
+PYTHONPATH=src .venv/bin/python -m madrid_rehab.demo_audit --output-dir reports/session_15/audit_nuevo
+PYTHONPATH=src .venv/bin/python tests/benchmark_session15.py --output reports/session_15/benchmark_nuevo.json
+```
+
+Sin dependencias nuevas ni compilación. Instalación: `.venv/bin/python -m pip install -r requirements.lock`; suite y Ruff como abajo. `MADRID_REHAB_PUBLIC=1` mantiene protecciones y limita la demo a identificación. No publicar ni redistribuir evidencias pendientes de licencia. El exportador nuevo produce HTML reducido, sin PRTR/REC ni otras evidencias. [Revisión visual y prueba de navegador](docs/auditoria_visual_pendiente.md).
+
 **Resultado vigente de sesión 13:** 236.134 contenidos CEEE canónicos regionales, 179 municipios con observaciones verificadas y 136.742 contenidos vinculados a CP aceptadas de Madrid y cinco pilotos parciales. Panel energético regional y fichas con evidencia separada de PRTR. [Resultados, límites y reproducción](docs/sesion_13_energia_regional.md). Las secciones de sesiones anteriores conservan sus estados históricos; los recursos reales del piloto 12.2 ya están disponibles localmente.
 
-Cobertura vigente: **sesión 12.1, 179 municipios oficiales con límites validados y 7.532 concesiones PRTR territorializadas**: 3.808 Madrid capital y 3.724 en otros 116 municipios; 315.527.338,99 € reconciliados. CP/BU integrado únicamente en Madrid. [Resultados, fuentes, conflictos y reproducción](docs/sesion_12_1_limites_prtr.md). Sin publicación; licencias de redistribución pendientes y validación visual bloqueada por permisos de socket. Las secciones de sesiones anteriores conservan su estado histórico.
+Resultado histórico: **sesión 12.1, 179 municipios oficiales con límites validados y 7.532 concesiones PRTR territorializadas**: 3.808 Madrid capital y 3.724 en otros 116 municipios; 315.527.338,99 € reconciliados. CP/BU integrado únicamente en Madrid. [Resultados, fuentes, conflictos y reproducción](docs/sesion_12_1_limites_prtr.md). Sin publicación; licencias de redistribución pendientes y validación visual bloqueada por permisos de socket. Las secciones de sesiones anteriores conservan su estado histórico.
 
 **Sesión 12.2: 332 pruebas superadas y una omitida por ausencia de los recursos reales; Ruff correcto.** Piloto Getafe/Móstoles/Leganés/Alcorcón/Alcalá preparado; los diez GET fallan por DNS en el sandbox, sin CP/BU externo incorporado. Descarga reanudable e integración desde Ubuntu con un comando: `PYTHONPATH=src .venv/bin/python -m madrid_rehab.cadastre_pilot`. [Resultados, manifiesto, límites y reproducción](docs/sesion_12_2_piloto_catastral.md). Madrid y la clasificación 12.1 permanecen intactos.
 
@@ -317,3 +330,8 @@ PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -v
 .venv/bin/ruff check src tests
 .venv/bin/ruff format --check src/madrid_rehab/conservation.py src/madrid_rehab/conservation_view.py src/madrid_rehab/rec.py src/madrid_rehab/administrative_view.py tests/test_conservation.py tests/benchmark_conservation.py
 ```
+
+La entrada habitual ofrece ahora el [explorador y ficha compartidos de los seis municipios](docs/navegacion_municipal_compartida.md), con zonas y páginas acotadas. La vista histórica por distritos de Madrid continúa en la barra lateral.
+
+Diagnóstico y corrección de la navegación por un solo mapa, contrato de eventos y
+validación pendiente en navegador: [auditoría municipal](docs/diagnostico_navegacion_municipal.md).

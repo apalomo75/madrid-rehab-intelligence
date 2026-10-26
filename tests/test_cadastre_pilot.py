@@ -305,7 +305,9 @@ class ObjectTests(unittest.TestCase):
                 )
                 app = AppTest.from_file(str(path), default_timeout=30).run()
                 self.assertFalse(app.exception)
-                app.checkbox[0].set_value(True).run()
+                next(x for x in app.radio if x.label == "Objetos catastrales").set_value(
+                    "Objetos BU independientes"
+                ).run()
                 self.assertFalse(app.exception)
                 self.assertEqual(len(app.get("download_button")), 0)
 
