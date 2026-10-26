@@ -159,6 +159,7 @@ def render_energy_region(code=None):
 
 def render_energy_parcel(code, ref):
     if not enabled() or not (root_path() / "manifest.json").exists():
+        st.info("Fuente CEEE no disponible o protegida; consulta no realizada.")
         return
     st.markdown("**Información energética regional**")
     path = f"municipalities/{code}/links.parquet"

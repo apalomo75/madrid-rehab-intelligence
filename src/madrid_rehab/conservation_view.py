@@ -1,6 +1,7 @@
 """Consulta selectiva de evidencia administrativa; licencia pública cerrada por defecto."""
 
 import json
+import logging
 import os
 import re
 import time
@@ -178,7 +179,9 @@ def render_conservation_parcel(ref, municipality="28079"):
             )
         st.caption(NOTICE)
     except (OSError, ValueError, KeyError) as exc:
-        st.warning(f"No se puede verificar la evidencia de conservación: {exc}")
+        logging.getLogger(__name__).exception("Conservation panel read failed")
+        st.warning(f"No se puede verificar la evidencia de conservación: {type(exc).__name__}")
+        return "error de consulta de conservación"
 
 
 def render_conservation_activity(frame, key_prefix):

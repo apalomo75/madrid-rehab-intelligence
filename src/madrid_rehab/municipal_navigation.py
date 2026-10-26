@@ -2,6 +2,9 @@
 
 import math
 import os
+import re
+import logging
+from datetime import datetime, timezone
 
 import shapely as sh
 
@@ -108,12 +111,38 @@ def _object_index(code, kind, signature):
     return frame.sort_values("parcel_ref14").reset_index(drop=True)
 
 
-def selected_object(code, identifier, kind):
+def resolve_object(code, identifier, kind):
+    """Resolve a municipal domain identity without collapsing ambiguity."""
+    empty = pd.DataFrame()
+    if kind not in {"cp", "bu"} or not isinstance(identifier, str) or not identifier:
+        return "identificador inválido", empty
     if kind == "cp":
-        return demo.parcel(code, identifier)
-    root, relative = object_source(code, kind)
-    result = demo.read(root, relative, [("building_id", "==", identifier)])
-    return result if len(result) == 1 and bool(result.iloc[0].usable_geometry) else pd.DataFrame()
+        identifier = identifier.strip().upper()
+        if not re.fullmatch(r"[A-Z0-9]{14}", identifier):
+            return "identificador inválido", empty
+    try:
+        root, relative = object_source(code, kind)
+        field = "parcel_ref14" if kind == "cp" else "building_id"
+        result = demo.read(root, relative, [(field, "==", identifier)])
+        if result.empty:
+            return "objeto no disponible", empty
+        if len(result) != 1:
+            return "referencia ambigua", empty
+        row = result.iloc[0]
+        if "municipality_code" in result and str(row.municipality_code) != code:
+            return "incompatibilidad municipal", empty
+        if not bool(row.usable_geometry) or (
+            "selection_status" in result and row.selection_status != "accepted"
+        ):
+            return "objeto no utilizable", empty
+        return "CP encontrada y aceptada" if kind == "cp" else "BU encontrado y utilizable", result
+    except Exception:
+        logging.getLogger(__name__).exception("Cadastral read failed: %s %s", code, kind)
+        return "error de lectura", empty
+
+
+def selected_object(code, identifier, kind):
+    return resolve_object(code, identifier, kind)[1]
 
 
 def zone_page(index, zone, page):
@@ -147,8 +176,15 @@ def apply_map_event(state, event, allowed, code, prefix, zone):
     if state.get("municipal_active_context") != (code, prefix):
         return
     value = picked(event, allowed)
+    emitted = [
+        item.get("unit_id", item.get("properties", {}).get("unit_id"))
+        for items in (event or {}).get("selection", {}).get("objects", {}).values()
+        for item in items
+    ]
+    state["selection_event_id"] = [v for v in emitted if isinstance(v, str)]
     if not value:
         return
+    state["selection_last_change"] = datetime.now(timezone.utc).isoformat()
     if zone == "Vista general":
         state[prefix + "_zone"] = value
         state[prefix + "_ref"] = ""
@@ -211,6 +247,8 @@ def render_explorer(code, name, initial_ref=""):
                 if key != "municipal_kind_" + code:
                     del st.session_state[key]
         st.session_state["municipal_active_context"] = context
+        st.session_state["selection_event_id"] = None
+        st.session_state["selection_last_change"] = datetime.now(timezone.utc).isoformat()
     selection_key = prefix + "_ref"
     if selection_key not in st.session_state:
         st.session_state[selection_key] = st.session_state.get(
@@ -231,6 +269,8 @@ def render_explorer(code, name, initial_ref=""):
         st.session_state[selection_key] = ""
         st.session_state[prefix + "_selected"] = ""
         st.session_state[prefix + "_last_ref"] = ""
+        st.session_state["selection_last_change"] = datetime.now(timezone.utc).isoformat()
+        st.session_state["selection_event_id"] = None
         st.session_state[prefix + "_map_epoch"] = st.session_state.get(prefix + "_map_epoch", 0) + 1
 
     def back_to_zones():
@@ -242,6 +282,8 @@ def render_explorer(code, name, initial_ref=""):
 
     def search_changed():
         value = st.session_state[selection_key].strip()
+        st.session_state["selection_last_change"] = datetime.now(timezone.utc).isoformat()
+        st.session_state["selection_event_id"] = None
         st.session_state[prefix + "_selected"] = value.upper() if kind == "cp" else value
         st.session_state[prefix + "_map_epoch"] = st.session_state.get(prefix + "_map_epoch", 0) + 1
 
@@ -257,7 +299,11 @@ def render_explorer(code, name, initial_ref=""):
         st.button("Limpiar selección", key=prefix + "_clear", on_click=clear_object)
     ref = st.session_state[prefix + "_selected"]
     zones = sorted(index.zone.unique())
-    cp = selected_object(code, ref, kind) if ref else pd.DataFrame()
+    st.session_state["fiche_identity"] = None
+    st.session_state["fiche_sections"] = {}
+    reader_status, cp = (
+        resolve_object(code, ref, kind) if ref else ("sin selección", pd.DataFrame())
+    )
     selected_zone = index.loc[index.parcel_ref14.eq(ref), "zone"]
     zone_key = prefix + "_zone"
     if not selected_zone.empty and st.session_state.get(prefix + "_last_ref") != ref:
@@ -338,14 +384,30 @@ def render_explorer(code, name, initial_ref=""):
         if cp.empty:
             st.info("Selecciona un objeto en el mapa o busca su identificador catastral.")
             if ref:
-                st.error(
-                    "Referencia sin parcela única aceptada en esta captura. Puede estar ausente, ser ambigua o estar en cuarentena."
-                )
+                st.error(f"{reader_status}: {code} · {kind} · {ref}. No se confirma este objeto.")
         else:
             with st.container(height=650):
                 from .municipal_fiche import render_fiche
 
                 render_fiche(code, name, ref, cp, kind)
+
+    if os.environ.get("MADRID_REHAB_DEBUG_SELECTION") == "1":
+        with st.expander("Diagnóstico técnico de selección"):
+            st.json(
+                {
+                    "municipio": code,
+                    "nivel": "cuadrículas" if zone == "Vista general" else "objetos",
+                    "cuadricula": zone,
+                    "pagina": page if zone != "Vista general" else overview_page,
+                    "tipo": kind,
+                    "id_evento": st.session_state.get("selection_event_id"),
+                    "id_persistente": (code, kind, ref),
+                    "lector": reader_status,
+                    "identidad_renderizada": st.session_state.get("fiche_identity"),
+                    "apartados": st.session_state.get("fiche_sections"),
+                    "ultimo_cambio": st.session_state.get("selection_last_change"),
+                }
+            )
 
 
 def construction_records(code, cp):

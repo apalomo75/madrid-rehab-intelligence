@@ -1,9 +1,12 @@
 """One ordered fiche for municipal parcels and independent cadastral objects."""
 
 import re
+import logging
+from contextlib import contextmanager
 
 import pandas as pd
 import streamlit as st
+import shapely as sh
 
 SECTIONS = (
     "Identificación",
@@ -25,6 +28,26 @@ CONSTRUCTION_LABELS = {
     "dwellings_raw": "Viviendas declaradas",
     "building_units_raw": "Unidades declaradas",
 }
+
+
+LOGGER = logging.getLogger(__name__)
+
+
+@contextmanager
+def panel(label, statuses):
+    """An auxiliary failure must never abort the remaining cadastral fiche."""
+    statuses[label] = "consulta iniciada"
+    try:
+        yield
+        if statuses[label] == "consulta iniciada":
+            statuses[label] = "renderizado; disponibilidad indicada en el apartado"
+    except Exception as exc:
+        LOGGER.exception("Fiche panel failed: %s", label)
+        statuses[label] = "error de consulta: " + type(exc).__name__
+        st.warning(
+            f"{label}: consulta fallida ({type(exc).__name__}). "
+            "No se puede determinar la disponibilidad; identificación conservada."
+        )
 
 
 def construction_table(records):
@@ -103,16 +126,16 @@ def render_fiche(code, name, identifier, objects, kind="cp"):
     from . import demo
     from .municipal_navigation import construction_records
 
+    statuses = {}
+    st.session_state["fiche_sections"] = statuses
+    st.session_state["fiche_identity"] = (code, kind, identifier)
     row = objects.iloc[0]
     ref = identifier if kind == "cp" else None
-    if kind == "bu" and code == "28079":
-        candidate = row.get("parcel_ref14")
-        if isinstance(candidate, str) and not demo.parcel(code, candidate).empty:
-            ref = candidate
+    # BU remains independent: a parcel field alone does not document a BU–CP relation.
     conservation_ref = ref if ref and re.fullmatch(r"[0-9]{7}[A-Z]{2}[0-9]{4}[A-Z]", ref) else None
     st.subheader(f"Ficha de {'parcela' if kind == 'cp' else 'objeto BU'} · {identifier}")
     tabs = st.tabs(SECTIONS)
-    with tabs[0]:
+    with tabs[0], panel(SECTIONS[0], statuses):
         st.write(
             f"{name} · {'Parcela catastral CP' if kind == 'cp' else 'Objeto catastral BU independiente'}"
         )
@@ -124,6 +147,23 @@ def render_fiche(code, name, identifier, objects, kind="cp"):
                 f"Referencia de parcela acreditada: {ref}"
                 if ref
                 else "Relación BU–CP: " + UNAVAILABLE
+            )
+        st.write(f"Municipio: {code} · Identidad: {identifier}")
+        st.caption("Fuente: Dirección General del Catastro · INSPIRE")
+        st.write(
+            f"Geometría utilizable: {bool(row.get('usable_geometry', False))} · "
+            f"Validación: {row.get('selection_status', 'captura histórica auditada')}"
+        )
+        geometry = row.get("geometry_wkt")
+        if isinstance(geometry, str):
+            point = sh.from_wkt(geometry).representative_point()
+            st.caption(f"Ubicación EPSG:25830: {point.x:.2f}, {point.y:.2f}")
+        else:
+            st.caption("Ubicación: " + UNAVAILABLE)
+        if kind == "bu" and not ref:
+            st.caption(
+                "Objeto constructivo consultado de forma independiente; no consta una "
+                "relación documental confirmada con una parcela de las fuentes integradas"
             )
         if demo.private() and conservation_ref:
             from .conservation_view import parcel_evidence
@@ -142,7 +182,7 @@ def render_fiche(code, name, identifier, objects, kind="cp"):
                 st.caption("Accesos y dirección: " + UNAVAILABLE)
         else:
             st.caption("Accesos y dirección: " + UNAVAILABLE)
-    with tabs[1]:
+    with tabs[1], panel(SECTIONS[1], statuses):
         construction = (
             construction_table(objects) if kind == "bu" else construction_records(code, objects)
         )
@@ -156,7 +196,7 @@ def render_fiche(code, name, identifier, objects, kind="cp"):
             st.caption(
                 "Atributos declarados del registro catastral; no confirman estado físico actual ni identidad de un edificio físico."
             )
-    with tabs[2]:
+    with tabs[2], panel(SECTIONS[2], statuses):
         if demo.private() and ref:
             from .energy_view import render_energy_parcel
 
@@ -171,17 +211,19 @@ def render_fiche(code, name, identifier, objects, kind="cp"):
                 if not demo.private()
                 else "Sin relación BU–CP acreditada para vincular certificados."
             )
-    with tabs[3]:
+    with tabs[3], panel(SECTIONS[3], statuses):
         if demo.private() and conservation_ref:
             from .conservation_view import render_conservation_parcel
 
-            render_conservation_parcel(ref, code)
+            result = render_conservation_parcel(ref, code)
+            if result:
+                statuses[SECTIONS[3]] = result
         else:
             st.info(UNAVAILABLE)
         st.caption(
             "Las obligaciones ITE/IEE no son resultados. Archivar, terminar o multar no acredita subsanación ni estado físico."
         )
-    with tabs[4]:
+    with tabs[4], panel(SECTIONS[4], statuses):
         if demo.private() and ref:
             render_prtr(code, ref)
         else:
@@ -191,7 +233,7 @@ def render_fiche(code, name, identifier, objects, kind="cp"):
                 if not demo.private()
                 else "Sin relación BU–CP acreditada para vincular ayudas."
             )
-    with tabs[5]:
+    with tabs[5], panel(SECTIONS[5], statuses):
         st.caption(demo.NOTICE)
         st.write(
             "Cobertura parcial de objetos observados; cuarentena excluida."

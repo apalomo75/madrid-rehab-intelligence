@@ -25,7 +25,7 @@ from madrid_rehab.municipal_navigation import (
 from madrid_rehab.regional_view import geometry_deck
 
 
-def mouse_pick(page, frame, field, zoom, wanted=None):
+def mouse_pick(page, frame, field, zoom, wanted=None, exclude=()):
     """Project real interior points using the exact view emitted by the app."""
     expect(page.get_by_test_id("stDeckGlJsonChart")).to_have_count(1)
     canvas = page.get_by_test_id("stDeckGlJsonChart").locator('canvas[id^="deckgl"]').first
@@ -39,7 +39,7 @@ def mouse_pick(page, frame, field, zoom, wanted=None):
     candidates = []
     for row in frame.itertuples():
         identifier = getattr(row, field)
-        if wanted and identifier != wanted:
+        if identifier in exclude or (wanted and identifier != wanted):
             continue
         geom = sh.from_wkt(row.geometry_wkt)
         point = geom.representative_point()
@@ -120,6 +120,10 @@ def main():
                     frame["unit_id"] = frame[field]
                     ref = mouse_pick(page, frame, "unit_id", 15)
                     check_fiche(page, ref, "parcela" if kind == "cp" else "objeto BU")
+                    page.screenshot(
+                        path=str(args.output_dir / f"{town.municipality_code}_{kind}_first.png"),
+                        full_page=True,
+                    )
                     page.get_by_role("button", name="Limpiar selección", exact=True).click()
                     expect(
                         page.get_by_role(
@@ -132,8 +136,21 @@ def main():
                     check_fiche(page, ref, "parcela" if kind == "cp" else "objeto BU")
                     alternatives = frame[frame.unit_id.ne(ref)]
                     if not alternatives.empty:
-                        other = mouse_pick(page, frame, "unit_id", 15, alternatives.iloc[0].unit_id)
+                        other = mouse_pick(page, frame, "unit_id", 15, exclude={ref})
                         check_fiche(page, other, "parcela" if kind == "cp" else "objeto BU")
+                        expect(
+                            page.get_by_role(
+                                "heading",
+                                name=f"Ficha de {'parcela' if kind == 'cp' else 'objeto BU'} · {ref}",
+                                exact=True,
+                            )
+                        ).to_have_count(0)
+                        page.screenshot(
+                            path=str(
+                                args.output_dir / f"{town.municipality_code}_{kind}_changed.png"
+                            ),
+                            full_page=True,
+                        )
                     checks["objects"].append(
                         {
                             "kind": kind,
