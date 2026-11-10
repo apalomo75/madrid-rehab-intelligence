@@ -236,13 +236,17 @@ def map_parcels(root, signature, x, y, zoom):
     return frame.iloc[:1500], len(frame) > 1500
 
 
-def geometry_deck(frame, id_column, zoom=8, selected=""):
+def geometry_deck(frame, id_column, zoom=8, selected="", *, preserve_geometry=False):
     project = Transformer.from_crs(25830, 4326, always_xy=True).transform
     features = []
     for row in frame.itertuples():
         geom = transform(
             project,
-            sh.from_wkt(row.geometry_wkt).simplify(5 if zoom < 12 else 0.2, preserve_topology=True),
+            sh.from_wkt(row.geometry_wkt)
+            if preserve_geometry
+            else sh.from_wkt(row.geometry_wkt).simplify(
+                5 if zoom < 12 else 0.2, preserve_topology=True
+            ),
         )
         features.append(
             dict(
@@ -260,6 +264,9 @@ def geometry_deck(frame, id_column, zoom=8, selected=""):
                 },
             )
         )
+    if "catalog_color" in frame:
+        for feature, color in zip(features, frame.catalog_color):
+            feature["properties"]["color"] = color
     center = sh.union_all(sh.from_wkt(frame.geometry_wkt.to_numpy())).representative_point()
     lon, lat = project(center.x, center.y)
     return pdk.Deck(

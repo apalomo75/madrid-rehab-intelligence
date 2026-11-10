@@ -172,10 +172,41 @@ def main():
             return
     view = st.sidebar.radio(
         "Navegación",
-        ["Explorar municipios", "Madrid capital", "Comunidad de Madrid · Municipios y cobertura"],
+        [
+            "Mapa comercial",
+            "Buscar por dirección",
+            "Consulta técnica · direcciones",
+            "Explorar municipios",
+            "Plan Rehabilita · Ayuntamiento de Madrid",
+            "Madrid capital",
+            "Comunidad de Madrid · Municipios y cobertura",
+        ],
         key="city_navigation",
     )
+    if view == "Mapa comercial":
+        from .commercial_catalog_view import render
+
+        render()
+        return
+    if view == "Consulta técnica · direcciones":
+        from .address_view import render
+
+        render(technical=True)
+        return
+    if view == "Buscar por dirección":
+        from .address_view import render
+
+        render()
+        return
+    if view == "Plan Rehabilita · Ayuntamiento de Madrid":
+        from .plan_rehabilita_view import render
+
+        render()
+        return
     if view == "Explorar municipios":
+        st.caption(
+            "Explorador técnico completo · incluye registros excluidos del catálogo comercial."
+        )
         from .demo import render
 
         render()

@@ -58,41 +58,16 @@ def construction_table(records):
 
 def render_prtr(code, ref):
     """Reuse the regional authenticated links and case reader, preserving match levels."""
-    from . import demo
-    from .grants_view import read_view
-    from .regional_view import regional_root_path
+    from .commercial_data import grant_records
 
-    root = regional_root_path()
-    links = demo.read(root, "grant_parcel_links.parquet", [("parcel_ref14", "==", ref)])
-    candidates_path = root / "grant_spatial_candidates.parquet"
-    if candidates_path.exists():
-        candidates = demo.read(root, candidates_path.name, [("parcel_ref14", "==", ref)])
-        links = pd.concat([links, candidates], ignore_index=True)
-    scope = (
-        "geographic_municipality_code"
-        if "geographic_municipality_code" in links
-        else "municipality_code"
-    )
-    links = links[links[scope].eq(code)]
-    if links.empty:
+    details = grant_records(code, ref)
+    if details.empty:
         st.info(UNAVAILABLE)
         st.caption(
             "No constan concesiones vinculadas en esta captura; no acredita ausencia real de ayudas."
         )
         return
-    data = read_view()
-    if data is None:
-        st.info(UNAVAILABLE)
-        return
-    details = (
-        links[["expediente_id", "match_status"]]
-        .drop_duplicates()
-        .merge(
-            data[1][["expediente_id", "programa", "importe_concedido"]],
-            on="expediente_id",
-            validate="many_to_one",
-        )
-    )
+    details = details[["expediente_id", "match_status", "programa", "importe_concedido"]].copy()
     details["match_status"] = details.match_status.replace(
         {
             "confirmed": "Referencia y geometría concordantes",
@@ -122,9 +97,83 @@ def render_prtr(code, ref):
     )
 
 
-def render_fiche(code, name, identifier, objects, kind="cp"):
+def render_fiche(
+    code, name, identifier, objects=None, kind="cp", *, postal=None, public_catalog=False
+):
+    """Open by stable identity; map, grid and PyDeck state are optional callers."""
+    from .cadastral_identity import resolve_object
+
+    st.session_state["fiche_identity"] = None
+    st.session_state["fiche_sections"] = {}
+    if kind == "cp":
+        identifier = identifier.strip().upper()
+    origin = (code, kind, identifier)
+    key = "fiche_route_" + "_".join(origin)
+    if st.session_state.get("fiche_route_origin") != origin:
+        for old_key in list(st.session_state):
+            if old_key.startswith("fiche_route_") and old_key != "fiche_route_origin":
+                del st.session_state[old_key]
+        st.session_state["fiche_route_origin"] = origin
+    target_kind, target_id = st.session_state.get(key, (kind, identifier))
+
+    def navigate(next_kind, next_id):
+        st.session_state[key] = (next_kind, next_id)
+
+    if (target_kind, target_id) != (kind, identifier):
+        st.button(
+            "Volver al objeto de origen · " + identifier,
+            key=key + "_back",
+            on_click=navigate,
+            args=(kind, identifier),
+        )
+        status, current = resolve_object(code, target_id, target_kind)
+    elif objects is None:
+        status, current = resolve_object(code, identifier, kind)
+    else:
+        status, current = "disponible", objects
+    if current.empty:
+        st.warning(status)
+        return
+    _render_commercial_and_technical(
+        code,
+        name,
+        target_id,
+        current,
+        target_kind,
+        navigate,
+        key,
+        postal if (target_kind, target_id) == (kind, identifier) else None,
+        public_catalog,
+    )
+
+
+def _render_commercial_and_technical(
+    code, name, identifier, objects, kind, navigate, route_key, postal, public_catalog=False
+):
     from . import demo
-    from .municipal_navigation import construction_records
+    from .commercial_data import load_fiche
+    from .commercial_view import render
+
+    model, tables, errors, timings = load_fiche(
+        code, name, identifier, objects, kind, postal, public_catalog=public_catalog
+    )
+    st.session_state["commercial_fiche_timings"] = timings
+    if demo.private() or public_catalog:
+        render(model, errors)
+    else:
+        st.subheader(model.title)
+        st.caption("Información adicional protegida en modo público.")
+    with st.expander("Detalles técnicos · seis secciones y datos originales", expanded=False):
+        _render_fiche(
+            code, name, identifier, objects, kind, navigate, route_key, tables, public_catalog
+        )
+
+
+def _render_fiche(
+    code, name, identifier, objects, kind, navigate, route_key, tables, public_catalog=False
+):
+    from . import demo
+    from . import enriched_cadastre as enriched
 
     statuses = {}
     st.session_state["fiche_sections"] = statuses
@@ -134,6 +183,8 @@ def render_fiche(code, name, identifier, objects, kind="cp"):
     # BU remains independent: a parcel field alone does not document a BU–CP relation.
     conservation_ref = ref if ref and re.fullmatch(r"[0-9]{7}[A-Z]{2}[0-9]{4}[A-Z]", ref) else None
     st.subheader(f"Ficha de {'parcela' if kind == 'cp' else 'objeto BU'} · {identifier}")
+    expose = demo.private() or public_catalog
+    enriched_enabled = code != "28079" and expose
     tabs = st.tabs(SECTIONS)
     with tabs[0], panel(SECTIONS[0], statuses):
         st.write(
@@ -142,7 +193,7 @@ def render_fiche(code, name, identifier, objects, kind="cp"):
         st.caption(
             "Identificación documental en captura. Parcela, objeto BU, portal y edificio físico son entidades diferentes."
         )
-        if kind == "bu":
+        if kind == "bu" and not enriched_enabled:
             st.write(
                 f"Referencia de parcela acreditada: {ref}"
                 if ref
@@ -160,12 +211,12 @@ def render_fiche(code, name, identifier, objects, kind="cp"):
             st.caption(f"Ubicación EPSG:25830: {point.x:.2f}, {point.y:.2f}")
         else:
             st.caption("Ubicación: " + UNAVAILABLE)
-        if kind == "bu" and not ref:
+        if kind == "bu" and not ref and not enriched_enabled:
             st.caption(
                 "Objeto constructivo consultado de forma independiente; no consta una "
                 "relación documental confirmada con una parcela de las fuentes integradas"
             )
-        if demo.private() and conservation_ref:
+        if expose and conservation_ref:
             from .conservation_view import parcel_evidence
 
             accesses = parcel_evidence(ref, "accesses", code)
@@ -182,22 +233,91 @@ def render_fiche(code, name, identifier, objects, kind="cp"):
                 st.caption("Accesos y dirección: " + UNAVAILABLE)
         else:
             st.caption("Accesos y dirección: " + UNAVAILABLE)
+        if kind == "bu" and enriched_enabled:
+            relations = enriched.links(code, identifier, "bu")
+            st.write("Relaciones documentales CP–BU (A validada; B/C incidencia)")
+            st.dataframe(
+                relations[["cp_reference_original", "link_class", "validation_reason"]],
+                hide_index=True,
+            )
+            for cp_ref in (
+                relations.loc[
+                    relations.link_class.eq("A") & relations.relation_validated,
+                    "cp_reference_normalized",
+                ]
+                .dropna()
+                .unique()
+            ):
+                st.button(
+                    "Abrir parcela relacionada · " + cp_ref,
+                    key=route_key + "_cp_" + cp_ref,
+                    on_click=navigate,
+                    args=("cp", cp_ref),
+                )
     with tabs[1], panel(SECTIONS[1], statuses):
-        construction = (
-            construction_table(objects) if kind == "bu" else construction_records(code, objects)
-        )
-        if construction.empty:
-            st.info(UNAVAILABLE)
+        if enriched_enabled:
+            enriched.metadata(code)
+            if kind == "cp":
+                records = tables["construction"]
+                relations = enriched.links(code, identifier)
+                issues = relations[~relations.link_class.eq("A")]
+                counts = records.source_feature_type.value_counts()
+                st.write(
+                    f"{len(records)} objetos BU con relación documental A · "
+                    f"{counts.get('Building', 0)} Building · {counts.get('BuildingPart', 0)} BuildingPart"
+                )
+                if not records.empty:
+                    labels = {"building_id": "Objeto BU", "source_feature_type": "Tipo"}
+                    labels.update({"recovered_" + k: v for k, v in enriched.ATTRIBUTES.items()})
+                    st.dataframe(
+                        records.drop(columns="municipality_code").rename(columns=labels),
+                        hide_index=True,
+                    )
+                    selected = st.selectbox(
+                        "Construcción relacionada",
+                        records.building_id.tolist(),
+                        key=route_key + "_bu_choice_" + identifier,
+                    )
+                    st.button(
+                        "Consultar construcción",
+                        key=route_key + "_open_" + identifier,
+                        on_click=navigate,
+                        args=("bu", selected),
+                    )
+                else:
+                    st.info(
+                        "Sin BU documental A en esta captura; no acredita ausencia de construcciones."
+                    )
+                st.write(f"{len(issues)} vínculos con incidencias, sin confirmación")
+                if not issues.empty:
+                    st.dataframe(
+                        issues[["building_id", "link_class", "validation_reason"]], hide_index=True
+                    )
+            else:
+                own = enriched.building(code, identifier).iloc[0]
+                st.write("Tipo de objeto: " + own.source_feature_type)
+                attributes = enriched.attribute_table(own)
+                st.dataframe(attributes[["Atributo", "Valor", "Estado"]], hide_index=True)
+                with st.expander("Valores originales y procedencia de cada atributo"):
+                    st.dataframe(attributes, hide_index=True)
             st.caption(
-                "Los BU independientes pueden consultarse desde el selector de objetos. No se atribuyen a esta parcela sin relación acreditada."
+                "Valores propios del objeto. No se suman superficies de Building y BuildingPart. "
+                "BuildingPart no equivale a edificio completo. Nulos y estados se conservan; "
+                "la condición catastral no es una inspección actual."
             )
         else:
-            st.dataframe(construction, hide_index=True)
-            st.caption(
-                "Atributos declarados del registro catastral; no confirman estado físico actual ni identidad de un edificio físico."
+            construction = (
+                construction_table(objects)
+                if kind == "bu"
+                else construction_table(tables["construction"])
             )
+            if construction.empty:
+                st.info(UNAVAILABLE)
+            else:
+                st.dataframe(construction, hide_index=True)
+        st.caption("Atributos declarados; no confirman identidad ni estado físico actual.")
     with tabs[2], panel(SECTIONS[2], statuses):
-        if demo.private() and ref:
+        if expose and ref:
             from .energy_view import render_energy_parcel
 
             render_energy_parcel(code, ref)
@@ -208,11 +328,11 @@ def render_fiche(code, name, identifier, objects, kind="cp"):
             st.info(UNAVAILABLE)
             st.caption(
                 "Información protegida en modo público."
-                if not demo.private()
-                else "Sin relación BU–CP acreditada para vincular certificados."
+                if not expose
+                else "CEEE pertenece a la parcela y a su ámbito certificado; no se atribuye a este BU."
             )
     with tabs[3], panel(SECTIONS[3], statuses):
-        if demo.private() and conservation_ref:
+        if expose and conservation_ref:
             from .conservation_view import render_conservation_parcel
 
             result = render_conservation_parcel(ref, code)
@@ -224,17 +344,58 @@ def render_fiche(code, name, identifier, objects, kind="cp"):
             "Las obligaciones ITE/IEE no son resultados. Archivar, terminar o multar no acredita subsanación ni estado físico."
         )
     with tabs[4], panel(SECTIONS[4], statuses):
-        if demo.private() and ref:
+        if expose and ref:
             render_prtr(code, ref)
         else:
             st.info(UNAVAILABLE)
             st.caption(
                 "PRTR protegido: reutilización sin acreditar."
-                if not demo.private()
-                else "Sin relación BU–CP acreditada para vincular ayudas."
+                if not expose
+                else "Las ayudas pertenecen al expediente y la parcela; no se atribuyen a este BU."
             )
     with tabs[5], panel(SECTIONS[5], statuses):
         st.caption(demo.NOTICE)
+        if enriched_enabled:
+            st.write("Snapshot: " + str(enriched.ROOT))
+            relations = enriched.links(code, identifier, kind)
+            st.write(
+                f"Calidad documental: {relations.link_class.value_counts().to_dict()} · "
+                f"Incidencias: {int((~relations.link_class.eq('A')).sum())}"
+            )
+            st.caption(
+                "A: declaración y geometría concordantes según regla 95%/5%. "
+                "B: incidencia documental o geométrica. C: sin CP aceptada resoluble. "
+                "No acredita edificio físico ni atribuye CEEE, conservación o PRTR al BU."
+            )
+            if kind == "cp":
+                st.caption(
+                    "Altura sobre rasante: no disponible en esta captura. "
+                    "La disponibilidad de uso, fechas, viviendas, plantas y superficie varía "
+                    "por objeto; consultar el detalle BU y sus estados, sin heredar valores."
+                )
+            if kind == "bu":
+                own = enriched.building(code, identifier).iloc[0]
+                st.write(
+                    "Campos no declarados válidos: "
+                    + ", ".join(
+                        label
+                        for k, label in enriched.ATTRIBUTES.items()
+                        if own.get("recovered_" + k + "_state") != "declared"
+                    )
+                )
+                st.json(
+                    {
+                        field: str(own.get(field))
+                        for field in (
+                            "source_gml_member",
+                            "source_ordinal",
+                            "source_xml_sha256",
+                            "source_zip_sha256",
+                            "enrichment_captured_at",
+                            "enrichment_rule",
+                        )
+                    }
+                )
         st.write(
             "Cobertura parcial de objetos observados; cuarentena excluida."
             if code != "28079"

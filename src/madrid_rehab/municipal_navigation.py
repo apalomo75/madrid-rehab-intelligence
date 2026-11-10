@@ -2,8 +2,6 @@
 
 import math
 import os
-import re
-import logging
 from datetime import datetime, timezone
 
 import shapely as sh
@@ -13,6 +11,7 @@ import pandas as pd
 import streamlit as st
 from shapely.geometry import box
 
+from .cadastral_identity import object_source, resolve_object
 from . import demo
 from .city_maps import unit_selection
 
@@ -45,21 +44,6 @@ def covered_municipalities():
     ):
         codes.add("28079")
     return demo.municipalities().loc[lambda frame: frame.municipality_code.isin(codes)]
-
-
-def object_source(code, kind):
-    if kind == "cp":
-        return demo.cp_source(code)
-    if kind != "bu":
-        raise ValueError("Tipo catastral desconocido")
-    override = os.environ.get("MADRID_REHAB_CADASTRE_DIR")
-    if override and code != "28079":
-        return demo.Path(override) / code, "bu.parquet"
-    return (
-        (demo.CITY, "buildings_audited.parquet")
-        if code == "28079"
-        else (demo.CADASTRE, f"{code}/bu.parquet")
-    )
 
 
 def parcel_index(code):
@@ -111,36 +95,6 @@ def _object_index(code, kind, signature):
     return frame.sort_values("parcel_ref14").reset_index(drop=True)
 
 
-def resolve_object(code, identifier, kind):
-    """Resolve a municipal domain identity without collapsing ambiguity."""
-    empty = pd.DataFrame()
-    if kind not in {"cp", "bu"} or not isinstance(identifier, str) or not identifier:
-        return "identificador inválido", empty
-    if kind == "cp":
-        identifier = identifier.strip().upper()
-        if not re.fullmatch(r"[A-Z0-9]{14}", identifier):
-            return "identificador inválido", empty
-    try:
-        root, relative = object_source(code, kind)
-        field = "parcel_ref14" if kind == "cp" else "building_id"
-        result = demo.read(root, relative, [(field, "==", identifier)])
-        if result.empty:
-            return "objeto no disponible", empty
-        if len(result) != 1:
-            return "referencia ambigua", empty
-        row = result.iloc[0]
-        if "municipality_code" in result and str(row.municipality_code) != code:
-            return "incompatibilidad municipal", empty
-        if not bool(row.usable_geometry) or (
-            "selection_status" in result and row.selection_status != "accepted"
-        ):
-            return "objeto no utilizable", empty
-        return "CP encontrada y aceptada" if kind == "cp" else "BU encontrado y utilizable", result
-    except Exception:
-        logging.getLogger(__name__).exception("Cadastral read failed: %s %s", code, kind)
-        return "error de lectura", empty
-
-
 def selected_object(code, identifier, kind):
     return resolve_object(code, identifier, kind)[1]
 
@@ -184,6 +138,7 @@ def apply_map_event(state, event, allowed, code, prefix, zone):
     state["selection_event_id"] = [v for v in emitted if isinstance(v, str)]
     if not value:
         return
+    state.pop("fiche_route_origin", None)
     state["selection_last_change"] = datetime.now(timezone.utc).isoformat()
     if zone == "Vista general":
         state[prefix + "_zone"] = value
@@ -221,22 +176,57 @@ def render_territories(selector_key):
     )
 
 
-def render_explorer(code, name, initial_ref=""):
+def render_explorer(code, name, initial_ref="", *, commercial=False):
     from .regional_view import geometry_deck
 
-    mode = st.radio(
-        "Objetos catastrales",
-        ["Parcelas", "Objetos BU independientes"],
-        horizontal=True,
-        key="municipal_kind_" + code,
+    mode = (
+        "Parcelas"
+        if commercial
+        else st.radio(
+            "Objetos catastrales",
+            ["Parcelas", "Objetos BU independientes"],
+            horizontal=True,
+            key="municipal_kind_" + code,
+        )
     )
     kind = "cp" if mode == "Parcelas" else "bu"
-    index = object_index(code, kind)
+    evidence = None
+    if commercial:
+        from . import commercial_catalog_store as catalog
+
+        labels = {
+            "Todas las evidencias": None,
+            "Construcción residencial": "construction",
+            "Energía": "energy",
+            "Conservación / obligaciones": "administrative",
+            "PRTR": "prtr",
+            "Plan Rehabilita": "rehabilita",
+        }
+        chosen = st.selectbox("Filtrar por evidencia", list(labels), key="catalog_evidence_" + code)
+        evidence = labels[chosen]
+        index = catalog.parcel_index(code, evidence)
+        st.caption(
+            f"{len(index):,} parcelas admitidas en este filtro. Azul: construcción; ámbar: energía sin construcción suficiente; violeta: antecedentes o ayudas sin las anteriores."
+        )
+    else:
+        index = object_index(code, kind)
     if index.empty:
-        st.info("No disponible en las fuentes integradas")
-        st.caption("No hay objetos con identidad única y geometría utilizable en esta captura.")
+        if commercial:
+            if evidence == "administrative" and code != "28079":
+                st.info(
+                    "La fuente de conservación no está integrada para este municipio; no acredita ausencia de antecedentes."
+                )
+            elif evidence == "rehabilita" and code != "28079":
+                st.info("Plan Rehabilita corresponde exclusivamente al Ayuntamiento de Madrid.")
+            else:
+                st.info("No hay parcelas admitidas para este filtro de evidencia.")
+        else:
+            st.info("No disponible en las fuentes integradas")
+            st.caption("No hay objetos con identidad única y geometría utilizable en esta captura.")
         return
     prefix = "municipal_" + code + "__" + kind
+    if commercial:
+        prefix += "_catalog_" + catalog.mode() + "_" + (evidence or "all")
     context = (code, prefix)
     if st.session_state.get("municipal_active_context") != context:
         for key in list(st.session_state):
@@ -262,10 +252,11 @@ def render_explorer(code, name, initial_ref=""):
         st.session_state[prefix + "_selected"] = st.session_state[selection_key]
     if code != "28079":
         st.caption(
-            "Cobertura catastral parcial. Solo parcelas aceptadas; cuarentena excluida. BU independiente, sin relación BU–CP acreditada."
+            "Cobertura catastral parcial. Solo parcelas aceptadas; cuarentena excluida. Relaciones documentales A e incidencias B/C disponibles en la ficha."
         )
 
     def clear_object():
+        st.session_state.pop("fiche_route_origin", None)
         st.session_state[selection_key] = ""
         st.session_state[prefix + "_selected"] = ""
         st.session_state[prefix + "_last_ref"] = ""
@@ -281,6 +272,7 @@ def render_explorer(code, name, initial_ref=""):
     search, clear = st.columns([4, 1])
 
     def search_changed():
+        st.session_state.pop("fiche_route_origin", None)
         value = st.session_state[selection_key].strip()
         st.session_state["selection_last_change"] = datetime.now(timezone.utc).isoformat()
         st.session_state["selection_event_id"] = None
@@ -304,6 +296,9 @@ def render_explorer(code, name, initial_ref=""):
     reader_status, cp = (
         resolve_object(code, ref, kind) if ref else ("sin selección", pd.DataFrame())
     )
+    if commercial and ref and not index.parcel_ref14.eq(ref).any():
+        cp = pd.DataFrame()
+        reader_status = catalog.INSUFFICIENT
     selected_zone = index.loc[index.parcel_ref14.eq(ref), "zone"]
     zone_key = prefix + "_zone"
     if not selected_zone.empty and st.session_state.get(prefix + "_last_ref") != ref:
@@ -354,6 +349,20 @@ def render_explorer(code, name, initial_ref=""):
             frame = demo.read(root, relative, [(field, "in", refs)])
             frame = frame[frame.usable_geometry & frame[field].isin(refs)].copy()
             frame["unit_id"] = frame[field]
+            if commercial:
+                details = index.set_index("parcel_ref14")
+
+                def color(identifier):
+                    row = details.loc[identifier]
+                    return (
+                        [35, 130, 155, 130]
+                        if row.construction
+                        else [215, 145, 35, 140]
+                        if row.energy
+                        else [135, 75, 160, 140]
+                    )
+
+                frame["catalog_color"] = frame[field].map(color)
             id_column = "unit_id"
             zoom = 15
             st.caption(
@@ -374,7 +383,7 @@ def render_explorer(code, name, initial_ref=""):
             )
 
         st.pydeck_chart(
-            geometry_deck(frame, id_column, zoom, selected=ref),
+            geometry_deck(frame, id_column, zoom, selected=ref, preserve_geometry=commercial),
             key=map_key,
             on_select=select_map,
             selection_mode="single-object",
@@ -384,12 +393,22 @@ def render_explorer(code, name, initial_ref=""):
         if cp.empty:
             st.info("Selecciona un objeto en el mapa o busca su identificador catastral.")
             if ref:
-                st.error(f"{reader_status}: {code} · {kind} · {ref}. No se confirma este objeto.")
+                if commercial:
+                    st.info(catalog.INSUFFICIENT)
+                else:
+                    st.error(
+                        f"{reader_status}: {code} · {kind} · {ref}. No se confirma este objeto."
+                    )
         else:
             with st.container(height=650):
-                from .municipal_fiche import render_fiche
+                if commercial:
+                    from .commercial_catalog_view import render_fiche
 
-                render_fiche(code, name, ref, cp, kind)
+                    render_fiche(code, name, ref, objects=cp)
+                else:
+                    from .municipal_fiche import render_fiche
+
+                    render_fiche(code, name, ref, cp, kind)
 
     if os.environ.get("MADRID_REHAB_DEBUG_SELECTION") == "1":
         with st.expander("Diagnóstico técnico de selección"):
@@ -411,22 +430,9 @@ def render_explorer(code, name, initial_ref=""):
 
 
 def construction_records(code, cp):
-    """Expose existing Madrid BU attributes without creating pilot BU/CP relations."""
-    if code != "28079":
-        return pd.DataFrame()
-    from pathlib import Path
-    from .city_store import partition_manifest
+    """Compatibility entry for historical callers."""
+    from .cadastral_identity import construction_records as read_records
+
     from .municipal_fiche import construction_table
 
-    DEFAULT = Path(__file__).resolve().parents[2] / "data/processed/session_7_final"
-
-    district = cp.iloc[0].get("district_code")
-    if not isinstance(district, str) or len(district) != 2:
-        return pd.DataFrame()
-    root = Path(os.environ.get("MADRID_REHAB_SESSION7_DIR", str(DEFAULT)))
-    metadata = partition_manifest(root, district)
-    path = root / "districts" / district / "map_buildings.parquet"
-    if demo.digest(path) != metadata["outputs"][path.name]:
-        raise ValueError("Registros constructivos alterados")
-    records = pd.read_parquet(path, filters=[("parcel_ref14", "==", cp.iloc[0].parcel_ref14)])
-    return construction_table(records)
+    return construction_table(read_records(code, cp))

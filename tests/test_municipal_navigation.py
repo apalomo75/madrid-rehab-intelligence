@@ -49,7 +49,8 @@ class MunicipalNavigationTests(unittest.TestCase):
         with patch.dict(os.environ, {"MADRID_REHAB_DEMO": "0", "MADRID_REHAB_PUBLIC": "1"}):
             app = AppTest.from_file("src/madrid_rehab/app.py", default_timeout=90).run()
             self.assertFalse(app.exception)
-            self.assertEqual(app.radio(key="city_navigation").value, "Explorar municipios")
+            self.assertEqual(app.radio(key="city_navigation").value, "Mapa comercial")
+            app.radio(key="city_navigation").set_value("Explorar municipios").run()
             selector = next(x for x in app.selectbox if x.label == "Municipio")
             self.assertEqual(
                 set(selector.options),
@@ -128,6 +129,6 @@ render_explorer(code, towns.loc[code, "name"])
                     self.assertFalse(selected_object(code, identifier, "bu").empty)
                     if code != "28079":
                         self.assertTrue(
-                            any("Relación BU–CP: No disponible" in x.value for x in app.markdown)
+                            any("Relaciones documentales CP–BU" in x.value for x in app.markdown)
                         )
                         self.assertFalse(app.get("link_button"))

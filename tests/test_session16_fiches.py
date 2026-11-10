@@ -53,7 +53,7 @@ class FicheResilienceTests(unittest.TestCase):
                                 tuple(app.session_state["fiche_identity"]), (code, kind, ref)
                             )
                             self.assertEqual(tuple(t.label for t in app.tabs), SECTIONS)
-                            self.assertIn(ref, app.subheader[0].value)
+                            self.assertTrue(any(ref in h.value for h in app.subheader))
                             self.assertTrue(any(ref in m.value for m in app.markdown))
                             results.append(
                                 dict(
@@ -75,7 +75,7 @@ class FicheResilienceTests(unittest.TestCase):
             "madrid_rehab.conservation_view.parcel_evidence",
             "madrid_rehab.energy_view.render_energy_parcel",
             "madrid_rehab.municipal_fiche.render_prtr",
-            "madrid_rehab.municipal_navigation.construction_records",
+            "madrid_rehab.cadastral_identity.construction_records",
         ):
             with (
                 self.subTest(target=target),
@@ -83,7 +83,7 @@ class FicheResilienceTests(unittest.TestCase):
             ):
                 app.text_input[0].set_value("0010510VK4701A").run()
                 self.assertFalse(app.exception)
-                self.assertIn("0010510VK4701A", app.subheader[0].value)
+                self.assertTrue(any("0010510VK4701A" in h.value for h in app.subheader))
                 self.assertEqual(tuple(t.label for t in app.tabs), SECTIONS)
                 self.assertTrue(app.warning)
                 other = object_index("28079", "cp").parcel_ref14.iloc[-1]

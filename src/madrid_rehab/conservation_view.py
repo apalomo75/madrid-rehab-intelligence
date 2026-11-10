@@ -85,8 +85,8 @@ def read_verified(root, relative, token, ref, columns=None):
     return frame
 
 
-def parcel_evidence(ref, product="events", municipality="28079"):
-    if not enabled():
+def parcel_evidence(ref, product="events", municipality="28079", *, public_catalog=False):
+    if not enabled() and not public_catalog:
         return None
     if municipality != "28079":
         return None

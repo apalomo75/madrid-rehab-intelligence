@@ -335,3 +335,103 @@ La entrada habitual ofrece ahora el [explorador y ficha compartidos de los seis 
 
 Diagnóstico y corrección de la navegación por un solo mapa, contrato de eventos y
 validación pendiente en navegador: [auditoría municipal](docs/diagnostico_navegacion_municipal.md).
+
+Sesión 19: fichas constructivas de los cinco pilotos, navegación CP–BU y API de
+ficha independiente del mapa. Contratos, fuentes postales, ejemplos y validación:
+[Integración Catastro enriquecido](docs/sesion_19_integracion_catastro_enriquecido.md).
+Pruebas: `PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -p test_session19_integration.py -v`.
+Benchmark: `PYTHONPATH=src .venv/bin/python tests/benchmark_session19_reader.py`.
+
+## Sesión 20: búsqueda comercial por dirección
+
+La entrada normal abre **Buscar por dirección**: municipio → calle/número → Buscar (o Enter) → selección expresa → ficha sin mapa. Madrid tiene 214.083 versiones postales indexadas, 206.982 con parcela confirmada. Los cinco pilotos conservan el explorador y las fichas enriquecidas, pero sus URL AD locales no contienen calle/número: no tienen cobertura postal acreditada. [Arquitectura, cobertura, límites y uso](docs/sesion_20_buscador_comercial.md).
+
+Sin dependencias nuevas. Índice SQLite local, sin geometrías y con huellas de fuentes; no reconstruye Catastro ni descarga fuentes. Primera generación (ambos directorios deben ser nuevos):
+
+```bash
+PYTHONPATH=src .venv/bin/python -m madrid_rehab.address_search
+# Replay: siempre salidas nuevas; para utilizarlo, MADRID_REHAB_ADDRESS_DIR apunta al nuevo índice.
+PYTHONPATH=src .venv/bin/python -m madrid_rehab.address_search --output-dir data/processed/addresses/replay_nuevo --report-dir reports/session_20_address_search/replay_nuevo
+PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -p test_address_search.py -v
+PYTHONPATH=src .venv/bin/python tests/benchmark_address_search.py --output reports/session_20_address_search/benchmark_nuevo.json
+# Comprobar primero si 8512 está ocupado; reutilizar el servidor existente si corresponde.
+ss -ltn 'sport = :8512'
+MADRID_REHAB_OFFLINE=1 PYTHONPATH=src .venv/bin/python -m streamlit run src/madrid_rehab/app.py --server.address 127.0.0.1 --server.port 8512
+PLAYWRIGHT_BROWSERS_PATH=/tmp/madrid-rehab-browser PYTHONPATH=src .venv/bin/python tests/browser_address_search.py --output-dir reports/session_20_address_search/browser_nuevo
+```
+
+Se mantienen instalación, suite completa y Ruff documentados arriba. Formato: `.venv/bin/ruff format --check src/madrid_rehab/address_search.py src/madrid_rehab/address_view.py tests/test_address_search.py tests/benchmark_address_search.py tests/browser_address_search.py`; integridad del diff: `git diff --check`. No hay paso de compilación. La prueba visual requiere Chromium disponible; no confundir AppTest con validación visual. No commits/push/publicación.
+
+### Sesión 21: ficha comercial
+
+La ficha compartida muestra primero la dirección, características por objeto, CEEE con
+ámbito, concesiones PRTR y antecedentes administrativos, seguidos de comprobaciones
+basadas en evidencia. Las seis secciones anteriores permanecen en «Detalles técnicos».
+No hay diagnósticos, puntuaciones ni consultas REC automáticas. Sin dependencias nuevas.
+
+```bash
+MADRID_REHAB_DEMO=0 MADRID_REHAB_OFFLINE=1 PYTHONPATH=src .venv/bin/python -m streamlit run src/madrid_rehab/app.py --server.address 127.0.0.1 --server.port 8512
+PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -p test_commercial_fiche.py -v
+PYTHONPATH=src .venv/bin/python tests/benchmark_commercial_fiche.py --output reports/session_21_commercial_fiche/replay_nuevo.json
+```
+
+Arquitectura, matriz de fuentes, seis casos reales, límites y validación:
+[Sesión 21](docs/sesion_21_ficha_comercial.md). La revisión de navegador está bloqueada
+por falta de Chromium; las pruebas AppTest no constituyen validación visual.
+
+### Sesión 22: auditoría y recuperación offline
+
+El producto lateral `data/processed/cadastre/session_22_madrid_01/` recupera superficie bruta, condición y unidades de los Building Madrid ya aceptados. La ficha conserva el objeto de origen y añade magnitudes/dirección de cada certificado y el acceso de cada antecedente. No integra BuildingPart Madrid nuevos ni cambia vínculos documentales.
+
+Resultados, denominadores y trazabilidad: [auditoría de sesión 22](docs/sesion_22_auditoria_recuperacion_datos.md). No hay dependencias ni build nuevos. Instalación: `.venv/bin/python -m pip install -r requirements.lock`. Desarrollo: servidor Streamlit habitual; no se requiere ejecutar GML al abrir fichas.
+
+```bash
+# Solo si hace falta un replay; siempre salida nueva, sin activación automática
+PYTHONPATH=src .venv/bin/python -m madrid_rehab.madrid_recovery --output-dir data/processed/cadastre/replay_22_nuevo
+mkdir -p reports/session_22_data_recovery/replay_nuevo
+PYTHONPATH=src .venv/bin/python -m madrid_rehab.data_recovery_audit --output reports/session_22_data_recovery/replay_nuevo/baseline_coverage.json
+PYTHONPATH=src .venv/bin/python -m madrid_rehab.data_recovery_audit --final --output reports/session_22_data_recovery/replay_nuevo/final_coverage.json
+PYTHONPATH=src .venv/bin/python tests/audit_data_recovery_sources.py --cases-only --output-dir reports/session_22_data_recovery/cases_replay_nuevo
+PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -p test_data_recovery.py -v
+PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -v
+.venv/bin/ruff check src tests
+```
+
+La auditoría completa de fuentes, si se necesita reproducirla en otra salida, usa `tests/audit_data_recovery_sources.py --output-dir reports/session_22_data_recovery/sources_replay_nuevo` con el mismo prefijo Python. El benchmark usa `tests/benchmark_commercial_fiche.py --output reports/session_22_data_recovery/benchmark_nuevo.json`. No confundir la mejora de profundidad con reducción de fichas vacías; las fuentes de inspección no integradas no equivalen a cero inspecciones.
+
+### Sesión 23: Plan Rehabilita municipal y prototipo catastral
+
+Consulta local separada de PRTR en la ficha y en **Plan Rehabilita · Ayuntamiento de Madrid**. Snapshot `data/processed/plan_rehabilita/session_23_01/`: 2.085 expedientes; vínculos A/B/C basados en el índice postal oficial, sin confirmación por proximidad. Los importes son por expediente; no sumar capas ni parcelas. La licencia del ZIP no está acreditada: datos ocultos en modo público.
+
+[Informe y límites](docs/sesion_23_plan_rehabilita_catastro.md). Sin dependencias ni build nuevos. Instalación: `.venv/bin/python -m pip install -r requirements.lock`; desarrollo: servidor Streamlit habitual. No se hace red al abrir la aplicación.
+
+```bash
+# Importación local reproducible; salida e informe nuevos siempre
+PYTHONPATH=src .venv/bin/python -m madrid_rehab.plan_rehabilita --input /ruta/PLAN_REHABILITA.zip --output-dir data/processed/plan_rehabilita/replay_nuevo --report-dir reports/session_23_plan_rehabilita/replay_nuevo
+PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -p test_plan_rehabilita.py -v
+PYTHONPATH=src .venv/bin/python tests/benchmark_plan_rehabilita.py --output reports/session_23_plan_rehabilita/benchmark_nuevo.json
+PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -v
+.venv/bin/ruff check src tests
+```
+
+Override local: `MADRID_REHAB_REHABILITA_DIR`, únicamente productos validados con los mismos hashes CP/postal. El cliente `cadastral_service_probe` es investigación aislada: muestra máxima de cuatro entradas/seis peticiones por invocación, nueva salida, sin activación en el visor ni recuperación masiva. No repetir consultas ya capturadas; el informe documenta las ocho peticiones efectivamente realizadas en S23 y los datos de suelo/RC20 que no son atributos de Building.
+
+### Sesión 24: catálogo comercial de seis municipios
+
+La entrada normal **Mapa comercial** filtra CP con información útil en Madrid, Getafe, Móstoles, Leganés, Alcorcón y Alcalá de Henares. **Buscar por dirección** usa el catálogo filtrado únicamente en Madrid. La búsqueda completa sigue en **Consulta técnica · direcciones**; **Explorar municipios** conserva el explorador técnico CP/BU. No se borran fuentes ni registros excluidos.
+
+Catálogo local: 153.929 CP; Madrid: 178.243 versiones postales incluidas, 35.840 excluidas. **Catálogo público cerrado (0 CP)** por las restricciones heredadas, pendientes de revisión por fuente/campo; no es una versión lista para publicar. [Reglas, cifras y límites](docs/sesion_24_catalogo_comercial.md).
+
+Sin dependencias/build nuevos; instalación y servidor local habituales.
+
+```bash
+PYTHONPATH=src .venv/bin/python -m madrid_rehab.commercial_catalog --output-dir data/processed/commercial_catalog/replay_nuevo --report-dir reports/session_24_commercial_catalog/replay_nuevo
+PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -p test_commercial_catalog.py -v
+PYTHONPATH=src .venv/bin/python tests/benchmark_commercial_catalog.py --output reports/session_24_commercial_catalog/review_nuevo.json
+PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -v
+.venv/bin/ruff check src tests
+```
+
+Snapshot `data/processed/commercial_catalog/session_24_01/`; override `MADRID_REHAB_CATALOG_DIR` exige entradas compatibles. Generar siempre en nuevos directorios. El índice se prepara offline; Streamlit no reconstruye el catálogo ni carga GML. Máximo 500 geometrías por página, una por CP, sin simplificación de la geometría comercial. Ningún municipio adicional ni buscador postal piloto.
+
+**Actualización de preparación pública:** por instrucción del propietario, `MADRID_REHAB_PUBLIC=1` usa ahora el mismo catálogo comercial validado que el modo local (153.929 CP; Madrid 178.243 versiones postales). Producto derivado nuevo `data/processed/commercial_catalog/session_24_public_02/`; el snapshot `session_24_01` permanece intacto. Se muestran atribuciones por fuente, se conservan los ámbitos y no se modifican las exclusiones de calidad. CEEE declara CC BY 4.0; PRTR y Plan Rehabilita mantienen licencia/procedencia sin verificar, por lo que el proyecto queda preparado para revisión visual pero no desplegado ni redistribuido. [Detalle y condiciones](docs/preparacion_catalogo_publico.md).
