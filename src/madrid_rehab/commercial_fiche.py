@@ -331,9 +331,20 @@ def build_model(
                         "BOCM_C · publicación según campo": clean(row.get("BOCM_C")),
                         "Actualización de fuente": clean(row.get("FECHA_ACTU")),
                         "Estado individual": "No verificado en esta captura",
-                        "Captura original": "Fecha no acreditada; ZIP aportado por usuario",
+                        (
+                            "Versión oficial verificada"
+                            if row.get("official_source_url")
+                            else "Captura original"
+                        ): clean(row.get("official_last_modified"))
+                        or "Fecha no acreditada; ZIP aportado por usuario",
                     },
-                    "Ayuntamiento de Madrid · SUB_TOTAL_XY · " + row.source_sha256,
+                    "Ayuntamiento de Madrid · SUB_TOTAL_XY · "
+                    + row.source_sha256
+                    + (
+                        " · " + str(row.official_source_url)
+                        if row.get("official_source_url")
+                        else ""
+                    ),
                     row.case_id,
                     Quality.PARCEL,
                     "Expediente municipal relacionado con acceso y CP; no edificio físico",

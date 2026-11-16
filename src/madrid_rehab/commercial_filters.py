@@ -14,6 +14,14 @@ LABELS = {
     "prtr": "Solo ayudas PRTR",
 }
 RESTRICTED = {"rehabilita", "prtr"}
+
+
+def restricted():
+    from . import production_bundle as bundle
+
+    return {"prtr"} if bundle.active() and bundle.allowed_plan() else RESTRICTED
+
+
 PUBLIC_BLOCK = (
     "Publicación externa bloqueada: licencia/procedencia de PRTR y Plan Rehabilita "
     "pendientes. Sus filtros y evidencias están deshabilitados en modo público. "
@@ -57,6 +65,10 @@ def _inspection_refs(token):
 
 
 def inspection_refs():
+    from . import production_bundle as bundle
+
+    if bundle.active():
+        return frozenset(bundle.metadata()["inspection_refs"])
     store.metadata()  # Its manifest authenticates this exact event product.
     return _inspection_refs(store.signature(store.root_path()))
 
@@ -67,7 +79,7 @@ def combine(index, selected=(), logic="OR", public=False, ite_refs=()):
     result = index.copy()
     result["ite"] = result.parcel_ref14.isin(ite_refs)
     if public:
-        for key in RESTRICTED:
+        for key in restricted():
             result[key] = False
     if selected:
         masks = result[list(selected)].astype(bool)
@@ -88,6 +100,18 @@ def query(code, selected=(), logic="OR"):
 def list_details(code, refs):
     """Bounded postal lookup; never instantiate a fiche to label a result."""
     refs = tuple(refs)
+    from . import production_bundle as bundle
+
+    if bundle.active():
+        with store.connect() as db:
+            placeholders = ",".join("?" for _ in refs)
+            rows = db.execute(
+                f"SELECT parcel_ref14,address,district FROM postal_labels WHERE parcel_ref14 IN ({placeholders})",
+                refs,
+            ).fetchall()
+        result = {ref: {} for ref in refs}
+        result.update({row[0]: {"address": row[1], "district": row[2]} for row in rows})
+        return result
     result = {ref: {} for ref in refs}
     if code != "28079" or not refs:
         return result

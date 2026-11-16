@@ -1,0 +1,10 @@
+# Paste into Streamlit Community Cloud Advanced settings AFTER approving delivery.
+# Replace only the URL with the immutable HTTPS read-only object location.
+MADRID_REHAB_PUBLIC = "1"
+MADRID_REHAB_OFFLINE = "1"
+MADRID_REHAB_DEV = "0"
+MADRID_REHAB_DEMO = "0"
+MADRID_REHAB_PILOT = "0"
+MADRID_REHAB_BUNDLE_URL = "https://example.invalid/madrid_rehab_v1_02.tar.gz"
+MADRID_REHAB_BUNDLE_SHA256 = "ab45ae4d5933e3886d22f47fe201ff074afd1f54a0f9abd3019075c021257c5f"
+MADRID_REHAB_BUNDLE_DIR = "data/deployment/cloud_v1_02"

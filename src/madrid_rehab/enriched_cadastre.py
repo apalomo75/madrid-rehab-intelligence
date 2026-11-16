@@ -69,6 +69,10 @@ def _verify(code, token):
 
 
 def metadata(code):
+    from . import production_bundle as bundle
+
+    if bundle.active():
+        return bundle.metadata()
     return _verify(code, signature(code))
 
 
@@ -84,6 +88,10 @@ def _query(code, token, name, field, values, columns):
 
 
 def query(code, name, field, values, columns=None):
+    from . import production_bundle as bundle
+
+    if bundle.active():
+        return bundle.read(ROOT / code / name, [(field, "in", list(values))], columns)
     return _query(
         code, signature(code), name, field, tuple(values), tuple(columns) if columns else None
     ).copy(deep=True)
@@ -141,6 +149,14 @@ def attribute_table(row):
 
 
 def schemas(code):
+    from . import production_bundle as bundle
+
+    if bundle.active():
+        bundle.metadata()
+        return {
+            name: pq.read_schema(bundle.resolve(ROOT / code / name)).names
+            for name in ("buildings_enriched.parquet", "cp_bu_documentary_links.parquet")
+        }
     metadata(code)
     return {
         name: pq.read_schema(ROOT / code / name).names

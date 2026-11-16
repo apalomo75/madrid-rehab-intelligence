@@ -1,6 +1,6 @@
 """Authenticated catalogue queries; commercial membership never falls back to all CP."""
 
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 from functools import lru_cache
 import json
 import os
@@ -18,6 +18,10 @@ INSUFFICIENT = "No hay información suficiente para ofrecer una ficha comercial 
 
 
 def root_path():
+    from . import production_bundle as bundle
+
+    if bundle.active():
+        return bundle.catalogue()
     return Path(os.environ.get("MADRID_REHAB_CATALOG_DIR", str(DEFAULT)))
 
 
@@ -26,6 +30,10 @@ def mode():
 
 
 def signature(root):
+    from . import production_bundle as bundle
+
+    if bundle.active():
+        return bundle.signature()
     meta = json.loads((root / "manifest.json").read_text())
     paths = [
         root / "manifest.json",
@@ -55,6 +63,10 @@ def _verify(root, token):
 
 
 def metadata():
+    from . import production_bundle as bundle
+
+    if bundle.active():
+        return bundle.metadata()
     root = root_path()
     meta = _verify(str(root), signature(root))
     expected_paths = {
@@ -123,10 +135,10 @@ def parcel_index(code, evidence=None):
 @lru_cache(maxsize=12)
 def _parcel_index(root, token, code, active_mode, conditions, evidence):
     columns = "parcel_ref14,x,y,zone,construction,energy,administrative,prtr,rehabilita,local_level,public_level"
-    with sqlite3.connect(
-        (Path(root) / "catalogue.sqlite").resolve().as_uri() + "?mode=ro", uri=True
+    with closing(
+        sqlite3.connect((Path(root) / "catalogue.sqlite").resolve().as_uri() + "?mode=ro", uri=True)
     ) as db:
-        return pd.read_sql_query(
+        result = pd.read_sql_query(
             "SELECT "
             + columns
             + " FROM parcels WHERE "
@@ -135,6 +147,14 @@ def _parcel_index(root, token, code, active_mode, conditions, evidence):
             db,
             params=(code,),
         )
+        from . import production_bundle as bundle
+
+        if bundle.active():
+            for column in ("zone", "local_level", "public_level"):
+                result[column] = result[column].astype("category")
+            for column in ("construction", "energy", "administrative", "prtr", "rehabilita"):
+                result[column] = result[column].astype(bool)
+        return result
 
 
 def search(code, street, number="", complement="", limit=100, offset=0):
@@ -149,10 +169,7 @@ def search(code, street, number="", complement="", limit=100, offset=0):
     if extra:
         conditions.append("a.complement_key=?")
         params.append(extra)
-    base = (
-        " FROM aliases s INDEXED BY street_lookup CROSS JOIN addresses a INDEXED BY address_id ON a.id=s.id WHERE "
-        + " AND ".join(conditions)
-    )
+    base = " FROM aliases s CROSS JOIN addresses a ON a.id=s.id WHERE " + " AND ".join(conditions)
     with connect() as db:
         found_original = bool(db.execute("SELECT 1" + base + " LIMIT 1", params).fetchone())
         selected = base + " AND a." + mode() + "_visible=1"
@@ -176,7 +193,7 @@ def suggest(code, street):
         return []
     with connect() as db:
         rows = db.execute(
-            "SELECT DISTINCT s.alias FROM aliases s INDEXED BY street_lookup JOIN addresses a INDEXED BY address_id ON a.id=s.id WHERE s.municipality=? AND s.alias>=? AND s.alias<? AND a."
+            "SELECT DISTINCT s.alias FROM aliases s JOIN addresses a ON a.id=s.id WHERE s.municipality=? AND s.alias>=? AND s.alias<? AND a."
             + mode()
             + "_visible=1 ORDER BY s.alias LIMIT 20",
             (code, key, key + "\uffff"),

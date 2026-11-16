@@ -155,6 +155,27 @@ def _read(root, signature, ids):
 def supplement(records, root=DEFAULT):
     """Only supplement rows already supplied by the authenticated historical reader."""
     root = Path(root)
+    from . import production_bundle as bundle
+
+    if bundle.active():
+        if records.empty:
+            return records
+        extra = bundle.read(
+            DEFAULT / "building_attributes.parquet",
+            [("building_id", "in", records.building_id.tolist())],
+        )
+        if not extra.building_id.is_unique:
+            raise ValueError("Ambiguous runtime Building identity")
+        if "parcel_ref14" in records:
+            pairs = records[["building_id", "parcel_ref14"]].merge(
+                extra[["building_id", "parcel_ref14"]], on="building_id", suffixes=("_old", "_new")
+            )
+            if not pairs.parcel_ref14_old.eq(pairs.parcel_ref14_new).all():
+                raise ValueError("Runtime Building identity mismatch")
+        columns = ["building_id", *[c for c in extra if c.startswith("recovered_")]]
+        if "source_feature_type" not in records:
+            columns.append("source_feature_type")
+        return records.merge(extra[columns], on="building_id", how="left", validate="many_to_one")
     if records.empty or not root.exists():
         return records
     if "building_id" not in records:

@@ -32,7 +32,8 @@ def render(*, technical=False):
         st.error(
             "Índice postal no disponible o incompatible. Regenere el índice según la documentación."
         )
-        st.caption(str(exc))
+        if postal.demo.private():
+            st.caption(str(exc))
         return
     code = st.selectbox(
         "Municipio",

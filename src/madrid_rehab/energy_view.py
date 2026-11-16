@@ -35,6 +35,10 @@ def enabled():
 
 
 def root_path():
+    from . import production_bundle as bundle
+
+    if bundle.active():
+        return bundle.resolve(DEFAULT)
     return Path(os.environ.get("MADRID_REHAB_ENERGY_DIR", str(DEFAULT)))
 
 
@@ -55,6 +59,13 @@ def read_verified(root, relative, signature, ref=None, ids=None, columns=None):
 
 
 def read(relative, ref=None, ids=None, columns=None):
+    from . import production_bundle as bundle
+
+    if bundle.active():
+        filters = [("parcel_ref14", "==", ref)] if ref is not None else None
+        if ids is not None:
+            filters = [("certificate_id", "in", list(ids))]
+        return bundle.read(DEFAULT / relative, filters, columns)
     root = root_path()
     info = (root / relative).stat()
     signature = (
@@ -158,7 +169,9 @@ def render_energy_region(code=None):
 
 
 def render_energy_parcel(code, ref):
-    if not enabled() or not (root_path() / "manifest.json").exists():
+    from . import production_bundle as bundle
+
+    if not bundle.active() and (not enabled() or not (root_path() / "manifest.json").exists()):
         st.info("Fuente CEEE no disponible o protegida; consulta no realizada.")
         return
     st.markdown("**Información energética regional**")
@@ -215,6 +228,8 @@ def render_energy_parcel(code, ref):
     st.caption(
         "A: relación documental con parcela aceptada; D: ambigua o en cuarentena. No se ha confirmado ningún objeto BU. Consumo y emisiones conservan valores originales con unidades sin verificar; no se comparan entre unidades distintas."
     )
+    if bundle.active():
+        return  # PRTR is excluded from the public runtime, including coexistence counts.
     coexistence = read("energy_grants_summary.parquet", ref=ref)
     coexistence = coexistence[coexistence.municipality_code.eq(code)]
     grants_count = int(coexistence.grant_case_count.max()) if not coexistence.empty else 0

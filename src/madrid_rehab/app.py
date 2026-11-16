@@ -438,7 +438,18 @@ def main():
 
 
 if __name__ == "__main__":
-    if os.environ.get("MADRID_REHAB_PILOT") == "1":
+    production = os.environ.get("MADRID_REHAB_BUNDLE_DIR") or os.environ.get(
+        "MADRID_REHAB_BUNDLE_URL"
+    )
+    if production and (
+        os.environ.get("MADRID_REHAB_PUBLIC") != "1"
+        or os.environ.get("MADRID_REHAB_PILOT") == "1"
+        or os.environ.get("MADRID_REHAB_DEMO") == "1"
+    ):
+        from madrid_rehab.i18n import t
+
+        st.error(t("bundle.missing"))
+    elif os.environ.get("MADRID_REHAB_PILOT") == "1":
         main()
     else:
         from madrid_rehab.city_app import main as city_main

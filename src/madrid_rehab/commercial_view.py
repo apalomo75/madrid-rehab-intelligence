@@ -192,6 +192,12 @@ def render(model, errors):
     st.caption(
         "Importes por expediente, sin suma entre capas ni parcelas. Subvención revisada no acredita pago ni obra ejecutada."
     )
+    for evidence in model.municipal_grants:
+        from .i18n import translate
+
+        for label, value in evidence.value.items():
+            st.write(translate(label) + ":", value if value is not None else "—")
+        st.caption(evidence.source + " · " + evidence.period)
     show_records(model.municipal_grants, "Consultar Plan Rehabilita y procedencia")
     st.markdown("### Conservación e inspecciones")
     if model.states.get("events") in {Quality.UNCOVERED, Quality.UNAVAILABLE}:

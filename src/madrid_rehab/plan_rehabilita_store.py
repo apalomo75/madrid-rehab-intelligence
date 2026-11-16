@@ -75,6 +75,30 @@ def _query(root, token, ref):
 
 
 def parcel_records(code, ref, kind="cp", *, public_catalog=False):
+    from . import production_bundle as bundle
+
+    if bundle.active():
+        if not bundle.allowed_plan() or code != "28079" or kind != "cp":
+            return pd.DataFrame()
+        locations = bundle.read(
+            DEFAULT / "locations.parquet", [("parcel_ref14", "==", ref), ("link_class", "==", "A")]
+        )
+        if locations.empty:
+            return pd.DataFrame()
+        cases = bundle.read(
+            DEFAULT / "cases.parquet", [("case_id", "in", locations.case_id.tolist())]
+        )
+        if not cases.case_id.is_unique or not cases.identity_usable.all():
+            raise ValueError("Ambiguous municipal case identity")
+        result = locations.merge(
+            cases, on="case_id", validate="many_to_one", suffixes=("_link", "")
+        )
+        actions = bundle.read(
+            DEFAULT / "actions.parquet", [("case_id", "in", locations.case_id.tolist())]
+        )
+        categories = actions.groupby("case_id").category.agg(lambda s: " · ".join(sorted(set(s))))
+        result["categories"] = result.case_id.map(categories).fillna("No determinada")
+        return result
     if (not demo.private() and not public_catalog) or code != "28079" or kind != "cp":
         return pd.DataFrame()
     root = root_path()

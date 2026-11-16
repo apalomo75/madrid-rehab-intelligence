@@ -389,6 +389,10 @@ def _validate(root, token):
 
 
 def metadata(root=None):
+    from . import production_bundle as bundle
+
+    if bundle.active():
+        return bundle.metadata()["postal"]
     root = Path(root or root_path())
     manifest = json.loads((root / "manifest.json").read_text())
     token = signature(

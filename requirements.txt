@@ -1,0 +1,3 @@
+# Streamlit Community Cloud: pinned runtime and src package installation.
+-r requirements-production.lock
+-e .

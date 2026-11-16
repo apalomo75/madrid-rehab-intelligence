@@ -445,3 +445,54 @@ PRTR y Plan Rehabilita tienen licencia/procedencia pendientes.
 Sesión 26: navegación simplificada en **Explorar inmuebles**, **Buscar por dirección** y **Acerca del proyecto**. Madrid incorpora distritos sobre asignaciones existentes; los filtros y las fichas conservan su contexto. Herramientas históricas locales: añadir `MADRID_REHAB_DEV=1` al comando Streamlit habitual (no disponibles en modo público). Pruebas: `PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -p test_session26_navigation.py -v`. Reconciliación: `PYTHONPATH=src .venv/bin/python tests/benchmark_session26_navigation.py --output reports/session_26_navigation/replay_nuevo.json`, siempre ruta nueva. Ver [rediseño de navegación](docs/sesion_26_rediseño_navegacion.md); revisión visual y permisos de publicación pendientes.
 
 Sesión 27: **ES por defecto**, selector **ES | EN** al inicio de la barra lateral. La versión inglesa conserva navegación, filtros, páginas e inmueble seleccionado. Traducciones centralizadas en `i18n.py`, sin nuevas dependencias ni cambios de datos o permisos. Pruebas: `PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -p test_i18n.py -v`. Auditoría de textos: `PYTHONPATH=src .venv/bin/python tests/audit_i18n.py --output-dir reports/session_27_i18n/replay_nuevo` (directorio nuevo). Ver [internacionalización](docs/sesion_27_internacionalizacion.md).
+
+### Sesión 28: preparación de Streamlit Community Cloud
+
+[Informe, matriz de licencias, inventario y decisiones pendientes](docs/sesion_28_preparacion_despliegue.md).
+El arranque técnico se ha probado en instalación nueva; **no hay autorización de publicación ni paquete de datos público aprobado**. `data/` no está en Git. No desplegar copiando únicamente el código ni subir los snapshots actuales sin revisión.
+
+Producción: Python **3.13**, desde la raíz del checkout:
+
+```bash
+python3.13 -m venv /tmp/madrid-rehab-cloud-venv
+/tmp/madrid-rehab-cloud-venv/bin/python -m pip install -r requirements.txt
+/tmp/madrid-rehab-cloud-venv/bin/python -m pip check
+MADRID_REHAB_PUBLIC=1 MADRID_REHAB_OFFLINE=1 MADRID_REHAB_DEV=0 MADRID_REHAB_DEMO=0 MADRID_REHAB_PILOT=0 /tmp/madrid-rehab-cloud-venv/bin/python -m streamlit run src/madrid_rehab/app.py --server.address 127.0.0.1 --server.port 8512
+```
+
+`requirements.txt` instala el paquete `src` y el lock transitivo de producción; no requiere `PYTHONPATH`. No hay compilación frontend. En Cloud seleccionar `src/madrid_rehab/app.py`, Python 3.13 y copiar los valores de `.streamlit/secrets.toml.example` a Advanced settings, siempre `MADRID_REHAB_PUBLIC="1"`. El archivo real de secretos se ignora. Cloud determina dirección y puerto; la configuración ya no fija los de WSL.
+
+Con los datos revisados disponibles, comprobaciones sin ETL y con salidas nuevas:
+
+```bash
+PYTHONPATH=src .venv/bin/python -m madrid_rehab.deployment --output reports/session_28_deployment/preflight_nuevo.json
+PYTHONPATH=src .venv/bin/python tests/audit_deployment.py --output-dir reports/session_28_deployment/inventory_nuevo
+PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -p test_deployment.py -v
+MADRID_REHAB_PUBLIC=1 MADRID_REHAB_OFFLINE=1 MADRID_REHAB_DEV=0 MADRID_REHAB_DEMO=0 MADRID_REHAB_PILOT=0 PYTHONPATH=src .venv/bin/python tests/smoke_deployment.py --output reports/session_28_deployment/smoke_nuevo.json
+```
+
+Preflight sale con 2 si faltan dependencias de arranque; no acredita licencias ni sustituye los hashes de los lectores. AppTest no acredita WebGL. Instalación de desarrollo, suite general y Ruff conservan los comandos documentados al inicio.
+
+### Sesión 29: paquete público independiente
+
+[Informe y pasos de primer despliegue](docs/sesion_29_paquete_produccion.md).
+Paquete final **`data/deployment/madrid_rehab_v1_02/`**: 562.372.274 bytes, reducción del 54,727 % frente a S28; pico local de RAM 478,8 MiB. La entrega comprimida ocupa 355.944.811 bytes. No está en Git ni se ha subido a ningún servicio.
+
+Plan Rehabilita se muestra directamente en ficha dentro del paquete: la copia oficial coincide exactamente con el ZIP local y su ficha acredita condiciones municipales. PRTR y padrones PDF ITE/IEE siguen excluidos; el filtro ITE se limita a menciones explícitas de órdenes municipales autorizadas. Catálogo autorizado: 152.752 CP y 176.332 versiones postales admitidas Madrid. Los snapshots históricos mantienen sus reglas y permisos.
+
+```bash
+# Desde la raíz, tras la instalación de producción documentada en S28:
+MADRID_REHAB_PUBLIC=1 MADRID_REHAB_OFFLINE=1 MADRID_REHAB_DEV=0 MADRID_REHAB_DEMO=0 MADRID_REHAB_PILOT=0 MADRID_REHAB_BUNDLE_DIR=data/deployment/madrid_rehab_v1_02 /tmp/madrid-rehab-cloud-venv/bin/python -m streamlit run src/madrid_rehab/app.py --server.address 127.0.0.1 --server.port 8512
+
+# Verificar; no requiere originales ni snapshots históricos:
+PYTHONPATH=src .venv/bin/python -m madrid_rehab.bundle_delivery verify --bundle-dir data/deployment/madrid_rehab_v1_02
+
+# Reproducir desde capturas existentes, sin MADRID_REHAB_BUNDLE_DIR/URL activos:
+PYTHONPATH=src .venv/bin/python -m madrid_rehab.prepare_production --output-dir data/deployment/replay_nuevo --report-dir reports/session_29_deployment/build_nuevo --plan-evidence reports/session_29_deployment/plan_source_verification.json
+
+# Validación focalizada y recorrido público; rutas nuevas para informes:
+PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -p test_production_bundle.py -v
+MADRID_REHAB_PUBLIC=1 MADRID_REHAB_OFFLINE=1 MADRID_REHAB_DEV=0 MADRID_REHAB_DEMO=0 MADRID_REHAB_PILOT=0 MADRID_REHAB_BUNDLE_DIR=data/deployment/madrid_rehab_v1_02 PYTHONPATH=src .venv/bin/python tests/smoke_production.py --output reports/session_29_deployment/smoke_nuevo.json
+```
+
+Para Cloud se propone una URL HTTPS de lectura del archivo `reports/session_29_deployment/madrid_rehab_v1_02.tar.gz`, con descarga/extracción verificadas y caché inmutable. `config/deployment_public.toml.example` contiene la configuración pública y SHA-256 exactos: tras aprobar y realizar la entrega, solo hay que sustituir la URL y pegar los valores en Advanced settings (Python 3.13; entrada `src/madrid_rehab/app.py`). No se necesita PYTHONPATH ni una nueva dependencia. No desplegar el commit publicado antiguo sin incorporar primero estos cambios y entregar los datos. Falta validación Cloud/WebGL real; AppTest no la sustituye.

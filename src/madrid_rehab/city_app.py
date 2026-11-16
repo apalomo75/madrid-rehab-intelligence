@@ -166,6 +166,24 @@ def main():
     from .i18n import language_selector
 
     language_selector()
+    from . import production_bundle as bundle
+    from .bundle_delivery import ensure
+
+    try:
+        ensure()
+    except (OSError, ValueError):
+        from .i18n import t
+
+        st.error(t("bundle.missing"))
+        return
+    if bundle.active():
+        try:
+            bundle.metadata()
+        except (OSError, ValueError, KeyError):
+            from .i18n import t
+
+            st.error(t("bundle.missing"))
+            return
     if os.environ.get("MADRID_REHAB_DEMO", "0") == "1":
         mode = st.sidebar.radio("Modo", ["Demostración", "Analista"], key="demo_mode")
         if mode == "Demostración":

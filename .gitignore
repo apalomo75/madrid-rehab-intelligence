@@ -11,3 +11,5 @@ data/
 reports/*/raw/
 
 /reports/
+
+.streamlit/secrets.toml

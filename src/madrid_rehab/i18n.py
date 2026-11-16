@@ -1559,6 +1559,36 @@ MESSAGES.update(
 )
 
 
+MESSAGES.update(
+    {
+        "bundle.orders_empty": {
+            "es": "Sin órdenes documentadas en la captura autorizada. Padrones de obligaciones ITE/IEE no disponibles; no acredita ausencia real de antecedentes.",
+            "en": "No orders documented in the authorized snapshot. ITE/IEE obligation lists are unavailable; this does not establish absence of real records.",
+        },
+        "bundle.source_version": {
+            "es": "Versión oficial verificada",
+            "en": "Verified official version",
+        },
+        "bundle.scope": {
+            "es": "Plan Rehabilita disponible con procedencia oficial verificada. PRTR permanece protegido. Conservación: órdenes históricas; padrones ITE/IEE y resultados no incluidos por permisos pendientes.",
+            "en": "Plan Rehabilita is available with verified official provenance. PRTR remains protected. Maintenance: historical orders; ITE/IEE obligation lists and outcomes are excluded pending reuse permissions.",
+        },
+        "bundle.missing": {
+            "es": "Paquete de producción ausente, incompleto o incompatible. No se han cargado datos alternativos.",
+            "en": "Production package missing, incomplete or incompatible. No alternative data has been loaded.",
+        },
+        "bundle.licenses": {
+            "es": "[Catastro INSPIRE · licencia](https://www.catastro.hacienda.gob.es/webinspire/documentos/Licencia.pdf) · [CEEE · fuente](https://datos.comunidad.madrid/dataset/registro_certificados_eficiencia_energetica) · [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) · [Plan Rehabilita · fuente oficial](https://geoportal.madrid.es/IDEAM_WBGEOPORTAL/dataset.iam?id=00000009-b145-11ea-a01e-ecb1d753f6e8) · [Condiciones municipales](https://datos.madrid.es/pages/condiciones-generales-ayuntamiento-de-madrid)",
+            "en": "[Catastro INSPIRE · license](https://www.catastro.hacienda.gob.es/webinspire/documentos/Licencia.pdf) · [CEEE · source](https://datos.comunidad.madrid/dataset/registro_certificados_eficiencia_energetica) · [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) · [Plan Rehabilita · official source](https://geoportal.madrid.es/IDEAM_WBGEOPORTAL/dataset.iam?id=00000009-b145-11ea-a01e-ecb1d753f6e8) · [Municipal terms](https://datos.madrid.es/pages/condiciones-generales-ayuntamiento-de-madrid)",
+        },
+        "bundle.attribution": {
+            "es": "Producto derivado independiente: Dirección General del Catastro · INSPIRE; Comunidad de Madrid · CEEE (CC BY 4.0); Ayuntamiento de Madrid · callejero y órdenes (CC BY 4.0), Plan Rehabilita (condiciones municipales). No constituye información oficial ni acredita estado físico, pago u obra ejecutada.",
+            "en": "Independent derived product: Dirección General del Catastro · INSPIRE; Comunidad de Madrid · CEEE (CC BY 4.0); Ayuntamiento de Madrid · street register and orders (CC BY 4.0), Plan Rehabilita (municipal reuse conditions). It is not official certification and does not establish physical condition, payment or completed works.",
+        },
+    }
+)
+
+
 def language():
     value = _st.session_state.get("i18n_language", DEFAULT_LANGUAGE)
     return value if value in {"es", "en"} else DEFAULT_LANGUAGE

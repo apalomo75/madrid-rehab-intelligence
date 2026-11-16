@@ -10,6 +10,14 @@ from . import demo
 
 
 def object_source(code, kind):
+    from . import production_bundle as bundle
+
+    if bundle.active() and kind == "bu":
+        return (
+            (bundle.resolve(demo.CITY), "buildings_audited.parquet")
+            if code == "28079"
+            else (bundle.resolve(demo.CADASTRE), f"{code}/bu.parquet")
+        )
     if kind == "cp":
         return demo.cp_source(code)
     if kind != "bu":
@@ -60,6 +68,17 @@ def construction_records(code, cp, columns=None):
         return pd.DataFrame()
     from pathlib import Path
     from .city_store import partition_manifest
+    from . import production_bundle as bundle
+
+    if bundle.active():
+        district = cp.iloc[0].get("district_code")
+        if not isinstance(district, str) or len(district) != 2:
+            return pd.DataFrame()
+        return bundle.read(
+            Path("data/processed/session_7_final/districts") / district / "map_buildings.parquet",
+            [("parcel_ref14", "==", cp.iloc[0].parcel_ref14)],
+            columns,
+        )
 
     DEFAULT = Path(__file__).resolve().parents[2] / "data/processed/session_7_final"
 

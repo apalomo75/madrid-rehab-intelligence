@@ -58,6 +58,12 @@ def construction_table(records):
 
 def render_prtr(code, ref):
     """Reuse the regional authenticated links and case reader, preserving match levels."""
+    from . import demo
+
+    if not demo.private():
+        st.info(UNAVAILABLE)
+        st.caption("Información protegida en modo público.")
+        return
     from .commercial_data import grant_records
 
     details = grant_records(code, ref)

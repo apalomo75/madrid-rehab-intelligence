@@ -50,6 +50,10 @@ def _read(root, relative, token, filters, columns):
 
 
 def read(root, relative, filters=None, columns=None):
+    from . import production_bundle as bundle
+
+    if bundle.active():
+        return bundle.read(Path(root) / relative, filters, columns)
     paths = [(CONSERVATION if root == CITY else root) / "manifest.json", root / relative]
     if root == CITY and relative == "buildings_audited.parquet":
         paths.append(Path("data/processed/session_7_final/manifest.json"))
@@ -62,6 +66,14 @@ def municipalities():
 
 
 def cp_source(code):
+    from . import production_bundle as bundle
+
+    if bundle.active():
+        return (
+            (bundle.resolve(CITY), "parcels_audited.parquet")
+            if code == "28079"
+            else (bundle.resolve(CADASTRE), f"{code}/cp.parquet")
+        )
     override = os.environ.get("MADRID_REHAB_CADASTRE_DIR")
     if override and code != "28079":
         return Path(override) / code, "cp.parquet"

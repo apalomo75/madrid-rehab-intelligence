@@ -26,7 +26,7 @@ def render(code, name, initial_ref=""):
         if col.checkbox(
             label,
             key="priority_" + code + "_" + key,
-            disabled=catalog.mode() == "public" and key in filters.RESTRICTED,
+            disabled=catalog.mode() == "public" and key in filters.restricted(),
         ):
             selected.append(key)
     logic = st.radio(
@@ -71,7 +71,12 @@ def render(code, name, initial_ref=""):
         "Se cuentan parcelas catastrales distintas, no necesariamente edificios únicos. Mapa y lista muestran páginas del mismo conjunto."
     )
     if catalog.mode() == "public":
-        st.warning(filters.PUBLIC_BLOCK)
+        from . import production_bundle as bundle
+
+        if bundle.active():
+            st.caption(t("bundle.scope"))
+        else:
+            st.warning(filters.PUBLIC_BLOCK)
     if "ite" in selected:
         st.info(
             "Obligaciones ITE/IEE y menciones documentadas; no son resultados de inspección ni un diagnóstico del estado actual."
@@ -161,7 +166,9 @@ def render(code, name, initial_ref=""):
         from .commercial_catalog_view import render_fiche
 
         render_fiche(code, name, ref)
-    if code == "28079":
+    from . import production_bundle as bundle
+
+    if code == "28079" and not bundle.active():
         with st.expander("Ver expedientes de Plan Rehabilita"):
             if catalog.mode() == "public":
                 st.info("Consulta bloqueada: licencia y redistribución pendientes de verificar.")

@@ -1,10 +1,13 @@
 [server]
-address = "127.0.0.1"
-port = 8512
 headless = true
+fileWatcherType = "none"
 
 [browser]
 gatherUsageStats = false
 
 [client]
 toolbarMode = "minimal"
+showErrorDetails = "none"
+
+[logger]
+level = "warning"

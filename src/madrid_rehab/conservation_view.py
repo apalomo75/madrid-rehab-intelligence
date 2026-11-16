@@ -86,6 +86,17 @@ def read_verified(root, relative, token, ref, columns=None):
 
 
 def parcel_evidence(ref, product="events", municipality="28079", *, public_catalog=False):
+    from . import production_bundle as bundle
+
+    if bundle.active():
+        if municipality != "28079":
+            return None
+        if product not in {"events", "accesses", "profiles", "rec_accesses"}:
+            raise ValueError("Producto no permitido")
+        name = DEFAULT / f"parcels/{ref[:2]}/{product}.parquet"
+        if bundle.key(name) not in bundle.metadata()["files"]:
+            return pd.DataFrame()
+        return bundle.read(name, [("parcel_ref14", "==", ref)])
     if not enabled() and not public_catalog:
         return None
     if municipality != "28079":
@@ -126,7 +137,9 @@ def render_conservation_parcel(ref, municipality="28079"):
     from .rec_view import render_rec_parcel
 
     render_rec_parcel(ref, municipality)
-    if not enabled():
+    from . import production_bundle as bundle
+
+    if not enabled() and not bundle.active():
         return
     st.markdown("**Conservación e inspecciones**")
     st.caption("Captura histórica de conservación independiente de la consulta REC bajo demanda.")
@@ -139,7 +152,14 @@ def render_conservation_parcel(ref, municipality="28079"):
         if not frame.empty:
             st.dataframe(display_events(frame), hide_index=True)
         else:
-            st.caption("No constan órdenes ni obligaciones vinculadas en las fuentes integradas.")
+            if bundle.active():
+                from .i18n import t
+
+                st.caption(t("bundle.orders_empty"))
+            else:
+                st.caption(
+                    "No constan órdenes ni obligaciones vinculadas en las fuentes integradas."
+                )
         accesses = parcel_evidence(ref, "accesses", municipality)
         if accesses is not None and not accesses.empty:
             st.caption(
@@ -177,7 +197,12 @@ def render_conservation_parcel(ref, municipality="28079"):
             st.caption(
                 "CEEE y PRTR son evidencias independientes. Su coexistencia no acredita financiación de una orden, obras realizadas ni una calificación energética de la parcela."
             )
-        st.caption(NOTICE)
+        if bundle.active():
+            from .i18n import t
+
+            st.caption(t("bundle.scope"))
+        else:
+            st.caption(NOTICE)
     except (OSError, ValueError, KeyError) as exc:
         logging.getLogger(__name__).exception("Conservation panel read failed")
         st.warning(f"No se puede verificar la evidencia de conservación: {type(exc).__name__}")

@@ -32,8 +32,9 @@ def render():
         st.error(
             "Catálogo no disponible o incompatible. La consulta completa se conserva en la capa técnica."
         )
-        with st.expander("Detalle del catálogo"):
-            st.text(str(exc))
+        if store.demo.private():
+            with st.expander("Detalle del catálogo"):
+                st.text(str(exc))
         return
     code = st.selectbox("Municipio", list(NAMES), format_func=NAMES.get, key="catalog_municipality")
     if code != "28079":
@@ -43,6 +44,14 @@ def render():
     from .municipal_navigation import render_explorer
 
     render_explorer(code, NAMES[code], commercial=True)
+    from . import production_bundle as bundle
+
+    if bundle.active():
+        from .i18n import t
+
+        st.caption(t("bundle.attribution"))
+        st.markdown(t("bundle.licenses"))
+        return
     with st.expander("Fuentes y alcance"):
         st.caption(
             "Catastro INSPIRE · Dirección General del Catastro; CEEE · Comunidad de Madrid (CC BY 4.0); "

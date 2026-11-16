@@ -208,7 +208,9 @@ def load_fiche(code, name, identifier, objects, kind="cp", postal=None, public_c
                 states["grants"] = Quality.UNAVAILABLE
             from .plan_rehabilita_store import parcel_records
 
-            if demo.private():
+            from . import production_bundle as bundle
+
+            if demo.private() or bundle.allowed_plan():
                 retrieve(
                     "municipal_grants",
                     lambda: parcel_records(code, identifier, kind, public_catalog=public_catalog),
