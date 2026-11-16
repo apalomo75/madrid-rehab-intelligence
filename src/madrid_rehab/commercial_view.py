@@ -51,7 +51,7 @@ def show_records(records, title):
         )
 
 
-def render(model, errors):
+def render_details(model, errors):
     st.subheader(model.title)
     if any(e.label == "Dirección seleccionada" for e in model.identity):
         st.caption(
@@ -237,3 +237,127 @@ def render(model, errors):
         )
         with st.expander("Detalle de consulta · " + label):
             st.text(error)
+
+
+def render(model, errors):
+    """Compact presentation; all original evidence remains in expanded details."""
+    from .i18n import t, translate
+    from .rec_client import official_url
+
+    st.subheader(model.title)
+    location = model.name
+    if model.code == "28079" and model.kind == "cp":
+        from .commercial_geography import district_index, district_names
+
+        districts = district_index()
+        match = districts[
+            districts.parcel_ref14.eq(model.identifier)
+            & districts.district_assignment.eq("assigned")
+        ]
+        if not match.empty:
+            location += " · " + district_names().get(match.iloc[0].district_code, "")
+    st.caption(location + " · " + model.identifier)
+    values = {}
+    for evidence in model.characteristics:
+        if evidence.value is not None:
+            values.setdefault(evidence.label, set()).add(str(evidence.value))
+    st.write(
+        translate("Uso declarado") + ": " + " · ".join(sorted(values.get("Uso declarado", {"—"})))
+    )
+    labels = [
+        "Años constructivos declarados",
+        "Viviendas declaradas por objeto",
+        "Superficie bruta de plantas (m²)",
+    ]
+    for col, label in zip(st.columns(3), labels):
+        entries = sorted(values.get(label, set()))
+        col.metric(
+            label,
+            (" · ".join(entries) or "—")
+            if len(entries) <= 2
+            else t("ux.multiple", count=len(entries)),
+        )
+    st.caption(t("ux.scope"))
+    st.markdown("**CEEE**")
+    certificates = {e.entity_id: e for e in model.energy if e.quality == Quality.PARCEL}
+    if certificates:
+        st.write(t("ux.certificates", count=len(certificates)))
+        for field in ("Consumo", "Emisiones"):
+            counts = Counter(e.value.get(field) or "—" for e in certificates.values())
+            st.write(
+                translate(field)
+                + ": "
+                + " · ".join(f"{k} ({v})" for k, v in sorted(counts.items()))
+            )
+        scopes = Counter(translate(SCOPES.get(e.scope, e.scope)) for e in certificates.values())
+        st.write(" · ".join(f"{k} ({v})" for k, v in scopes.items()))
+        dates = sorted(
+            {
+                e.value.get("Fecha declarada")
+                for e in certificates.values()
+                if e.value.get("Fecha declarada")
+            }
+        )
+        if dates:
+            st.caption(dates[0] if len(dates) == 1 else dates[0] + " — " + dates[-1])
+        st.caption(t("ux.energy_scope"))
+    else:
+        st.write(
+            t("ux.energy_unknown")
+            if model.states.get("energy") in {Quality.UNAVAILABLE, Quality.UNCOVERED}
+            else t("ux.no_energy")
+        )
+    show_records(model.energy, "Consultar certificados, fechas y fuentes")
+    if model.grants:
+        st.markdown("**PRTR**")
+        for evidence in model.grants:
+            if evidence.quality == Quality.PARCEL:
+                st.write(evidence.entity_id + " · " + str(evidence.value.get("Programa") or "—"))
+                st.write(
+                    translate("Concesión del expediente (€)")
+                    + ": "
+                    + str(evidence.value.get("Concesión del expediente (€)"))
+                )
+        st.caption(t("ux.grant_scope"))
+    st.markdown("**Plan Rehabilita**")
+    cases = {e.entity_id: e for e in model.municipal_grants}
+    if not cases:
+        st.write(t("ux.no_plan"))
+
+    def show_case(e):
+        data = e.value
+        st.write(str(data.get("Convocatoria") or "—") + " · " + e.entity_id)
+        st.write(data.get("Actuaciones por componente fuente") or "—")
+        amount = data.get("Subvención revisada del expediente (€)")
+        st.write(
+            translate("Subvención revisada del expediente (€)")
+            + ": "
+            + (f"{amount:,.2f} €" if amount is not None else "—")
+        )
+        st.caption(t("ux.plan_source") + " · " + translate(e.period))
+
+    if len(cases) > 1:
+        st.write(t("ux.plan_cases", count=len(cases)))
+        with st.expander(t("ux.plan_relation")):
+            for evidence in cases.values():
+                show_case(evidence)
+    else:
+        for evidence in cases.values():
+            show_case(evidence)
+    if cases:
+        st.caption(t("ux.plan_scope"))
+    st.markdown("**" + t("ux.inspections") + "**")
+    st.write(t("ux.no_results"))
+    counts = Counter(e.label for e in model.conservation if e.quality == Quality.PARCEL)
+    for label, count in counts.items():
+        st.write(translate(EVENTS.get(label, label)) + ": " + str(count))
+    st.caption(t("ux.orders_scope"))
+    if model.code == "28079":
+        st.link_button(t("ux.official"), official_url())
+        st.caption(t("ux.external"))
+        if not model.title.startswith("Consulta catastral"):
+            st.code(model.title.split(" — ")[0], language=None)
+    if errors:
+        st.warning(t("ux.errors"))
+    with st.expander(t("ux.full")):
+        render_details(model, errors)

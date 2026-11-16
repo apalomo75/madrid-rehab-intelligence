@@ -1079,7 +1079,14 @@ MESSAGES = {
     "filters.energy": {"es": "Solo CEEE", "en": "Energy certificates"},
     "filters.inspections": {"es": "Solo ITE/IEE", "en": "Building inspections (ITE/IEE)"},
     "filters.rehabilita": {"es": "Solo Plan Rehabilita", "en": "Plan Rehabilita"},
-    "filters.prtr": {"es": "Solo ayudas PRTR", "en": "PRTR grants"},
+    "filters.prtr": {
+        "es": "Ayudas NextGenerationEU",
+        "en": "EU recovery grants (NextGenerationEU)",
+    },
+    "filters.prtr_help": {
+        "es": "Ayudas vinculadas al Plan de Recuperación, Transformación y Resiliencia (PRTR) de España, financiado mediante fondos europeos NextGenerationEU",
+        "en": "Grants linked to Spain's Recovery, Transformation and Resilience Plan (PRTR), funded through the EU's NextGenerationEU recovery instrument",
+    },
     "message.0470": {"es": "CEEE", "en": "CEEE"},
     "message.0471": {"es": "ITE/IEE", "en": "ITE/IEE"},
     "message.0472": {"es": "ayudas PRTR", "en": "PRTR grants"},
@@ -1611,6 +1618,111 @@ def t(key, **kwargs):
         return template.format_map(_SafeVariables(kwargs))
     except (ValueError, TypeError):
         return template
+
+
+MESSAGES.update(
+    {
+        "ux.multiple": {"es": "{count} valores distintos", "en": "{count} distinct values"},
+        "ux.scope": {
+            "es": "Valores declarados por objeto constructivo vinculado; sin sumas ni atribución al portal.",
+            "en": "Declared values for linked construction objects; no totals or attribution to the entrance.",
+        },
+        "ux.certificates": {
+            "es": "{count} certificados vinculados a la parcela",
+            "en": "{count} certificates linked to the parcel",
+        },
+        "ux.energy_scope": {
+            "es": "Cada certificado conserva su ámbito; no existe una letra única acreditada para la parcela.",
+            "en": "Each certificate retains its scope; a single rating for the parcel is not established.",
+        },
+        "ux.no_energy": {
+            "es": "Sin certificado vinculado en nuestras fuentes.",
+            "en": "No linked certificate in our sources.",
+        },
+        "ux.energy_unknown": {
+            "es": "Información energética no disponible en esta consulta.",
+            "en": "Energy information is unavailable for this query.",
+        },
+        "ux.no_plan": {
+            "es": "Sin expediente confirmado disponible en esta consulta.",
+            "en": "No confirmed case available for this query.",
+        },
+        "ux.plan_source": {
+            "es": "Fuente: Ayuntamiento de Madrid · Plan Rehabilita",
+            "en": "Source: Ayuntamiento de Madrid · Plan Rehabilita",
+        },
+        "ux.plan_scope": {
+            "es": "Subvención revisada por expediente, sin suma. No acredita pago ni obras realizadas; viviendas del expediente, no del portal.",
+            "en": "Reviewed subsidy per case, without totals. It does not establish payment or completed works; dwellings belong to the case, not the entrance.",
+        },
+        "ux.inspections": {
+            "es": "Inspecciones y conservación",
+            "en": "Inspections and maintenance",
+        },
+        "ux.no_results": {
+            "es": "No hay resultados reales sistemáticos de ITE/IEE integrados.",
+            "en": "Systematic actual ITE/IEE inspection results are not integrated.",
+        },
+        "ux.orders_scope": {
+            "es": "Obligaciones de presentación y órdenes históricas no acreditan resultados ni el estado físico actual.",
+            "en": "Filing obligations and historical orders do not establish inspection results or current physical condition.",
+        },
+        "ux.official": {
+            "es": "Consultar registro oficial de inspecciones",
+            "en": "Consult the official inspection register",
+        },
+        "ux.external": {
+            "es": "Consulta individual de Madrid fuera de Madrid Rehab Intelligence. Copie la dirección y búsquela en el formulario oficial.",
+            "en": "Individual Madrid lookup outside Madrid Rehab Intelligence. Copy the address and search in the official form.",
+        },
+        "ux.errors": {
+            "es": "Hay consultas no verificables; consulte los detalles. No significa ausencia de registros.",
+            "en": "Some queries could not be verified; see details. This does not mean records are absent.",
+        },
+        "ux.full": {
+            "es": "Detalles ampliados · características, ayudas, conservación y fuentes",
+            "en": "Extended details · characteristics, grants, maintenance and sources",
+        },
+        "ux.no_geometry": {
+            "es": "Geometría no disponible para esta parcela; se muestra únicamente su ficha.",
+            "en": "Geometry is unavailable for this parcel; only its property record is shown.",
+        },
+        "ux.expand": {"es": "Ampliar ficha", "en": "Expand property record"},
+        "ux.back_list": {"es": "Volver a la lista", "en": "Back to the list"},
+        "ux.search_help": {
+            "es": "Busque una dirección y selecciónela para ver su parcela y ficha.",
+            "en": "Search for an address and select it to see its parcel and property record.",
+        },
+    }
+)
+
+
+MESSAGES.update(
+    {
+        "ux.postal_details": {
+            "es": "Detalles técnicos de la dirección seleccionada",
+            "en": "Technical details of the selected address",
+        },
+        "ux.grant_scope": {
+            "es": "Importe por expediente, sin suma. Concesión no acredita pago ni obras realizadas.",
+            "en": "Amount per case, without totals. An award does not establish payment or completed works.",
+        },
+    }
+)
+
+
+MESSAGES.update(
+    {
+        "ux.plan_cases": {
+            "es": "{count} expedientes confirmados · importes por expediente",
+            "en": "{count} confirmed cases · amounts per case",
+        },
+        "ux.plan_relation": {
+            "es": "Ver relación de expedientes Plan Rehabilita",
+            "en": "View Plan Rehabilita case list",
+        },
+    }
+)
 
 
 _BY_SPANISH = {v["es"]: k for k, v in MESSAGES.items()}

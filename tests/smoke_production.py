@@ -120,7 +120,7 @@ def main():
         assert app.checkbox(key="priority_28079_rehabilita").value
         record("english", app)
         app.radio(key="language_selector").set_value("ES").run()
-        next(b for b in app.button if b.label == "Volver al mapa").click().run()
+        next(b for b in app.button if b.label == "Volver a la lista").click().run()
         assert app.checkbox(key="priority_28079_rehabilita").value
         record("return_preserves_filters", app)
         app.checkbox(key="priority_28079_energy").check().run()

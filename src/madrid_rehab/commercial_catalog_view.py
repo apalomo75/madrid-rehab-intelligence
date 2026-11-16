@@ -11,11 +11,6 @@ def render_fiche(code, name, ref, postal=None, objects=None):
     if membership is None:
         st.info(store.INSUFFICIENT)
         return
-    st.caption(
-        "Nivel de la parcela de origen: "
-        + membership[store.mode() + "_level"]
-        + ". Ámbitos documentales; no diagnóstico del edificio."
-    )
     from .municipal_fiche import render_fiche as existing
 
     existing(code, name, ref, objects, postal=postal, public_catalog=store.mode() == "public")

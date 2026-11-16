@@ -496,3 +496,14 @@ MADRID_REHAB_PUBLIC=1 MADRID_REHAB_OFFLINE=1 MADRID_REHAB_DEV=0 MADRID_REHAB_DEM
 ```
 
 Para Cloud se propone una URL HTTPS de lectura del archivo `reports/session_29_deployment/madrid_rehab_v1_02.tar.gz`, con descarga/extracción verificadas y caché inmutable. `config/deployment_public.toml.example` contiene la configuración pública y SHA-256 exactos: tras aprobar y realizar la entrega, solo hay que sustituir la URL y pegar los valores en Advanced settings (Python 3.13; entrada `src/madrid_rehab/app.py`). No se necesita PYTHONPATH ni una nueva dependencia. No desplegar el commit publicado antiguo sin incorporar primero estos cambios y entregar los datos. Falta validación Cloud/WebGL real; AppTest no la sustituye.
+
+## Sesión 30: revisión local de la experiencia comercial
+
+Mapa y panel de resultados/ficha en paralelo, resumen con detalles ampliados, diálogo de ficha y búsqueda postal con mapa automático de la parcela confirmada. Reutiliza el paquete S29 publicado, sin reconstrucción ni nuevas dependencias. El registro oficial de inspecciones se consulta mediante enlace externo individual; no hay consultas REC automáticas.
+
+```bash
+PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -p test_session30_ux.py -v
+PLAYWRIGHT_BROWSERS_PATH=/tmp/madrid-rehab-browser PYTHONPATH=src .venv/bin/python tests/browser_session30.py --output-dir reports/session_30_ux/browser_nuevo
+```
+
+Véase [rediseño comercial S30](docs/sesion_30_rediseño_comercial.md). Revisión visual pendiente del propietario: Chromium no está disponible en este entorno. No publicar la actualización sin esa revisión y autorización.

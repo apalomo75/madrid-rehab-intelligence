@@ -219,7 +219,7 @@ class RealAddressTests(unittest.TestCase):
         app = AppTest.from_file("src/madrid_rehab/app.py", default_timeout=120).run()
         return app.radio(key="city_navigation").set_value("Buscar por dirección").run()
 
-    def test_real_map_free_fiche_return_and_municipal_change(self):
+    def test_real_mapped_fiche_return_and_municipal_change(self):
         app = self.make_app()
         self.assertFalse(app.exception)
         self.assertEqual(app.radio(key="city_navigation").value, "Buscar por dirección")
@@ -235,7 +235,7 @@ class RealAddressTests(unittest.TestCase):
         self.assertEqual(app.session_state["fiche_identity"][1], "cp")
         self.assertTrue(any("BAILÉN" in m.value.upper() for m in app.subheader))
         self.assertEqual(len(app.tabs), 6)
-        self.assertFalse(any(e.type == "deck_gl_json_chart" for e in app))
+        self.assertTrue(any(e.type == "deck_gl_json_chart" for e in app))
         next(b for b in app.button if b.label == "Volver a los resultados").click().run()
         self.assertEqual(app.text_input(key="postal_street").value, "CL BAILEN")
         self.assertEqual(app.selectbox(key="postal_result_choice").value, uid)

@@ -2,7 +2,7 @@
 
 import json
 
-from .i18n import ui as st
+from .i18n import t, ui as st
 
 from . import address_search as postal
 
@@ -23,9 +23,7 @@ def render(*, technical=False):
     st.title("Buscar un inmueble por dirección")
     if technical:
         st.caption("Consulta técnica completa: incluye registros excluidos del catálogo comercial.")
-    st.caption(
-        "Introduzca la dirección, seleccione el acceso correcto y abra su ficha. El mapa es opcional."
-    )
+    st.caption(t("ux.search_help"))
     try:
         meta = postal.metadata()
     except Exception as exc:
@@ -67,6 +65,7 @@ def render(*, technical=False):
         st.session_state["postal_page"] = 0
         st.session_state.pop("postal_open", None)
         st.session_state.pop("postal_result_choice", None)
+        st.session_state.pop("postal_dismissed", None)
     query = st.session_state.get("postal_query")
     if not query or query[0] != code:
         return
@@ -110,11 +109,7 @@ def render(*, technical=False):
 
     def label(uid):
         r = lookup[uid]
-        return (
-            f"{r['original']} · {postal.NAMES[code]} · {r['access_type']} · "
-            f"{len(json.loads(r['refs']))} parcela(s) confirmada(s) · {LABELS[r['status']]} · "
-            f"acceso {r['access_id'].split(':')[-1]} / versión {r['source_row']}"
-        )
+        return f"{r['original']} · {postal.NAMES[code]}"
 
     choice = st.selectbox(
         "Seleccione la dirección correcta",
@@ -129,6 +124,22 @@ def render(*, technical=False):
         )
         return
     row = lookup[choice]
+    with st.expander(t("ux.postal_details")):
+        st.json(
+            {
+                key: row.get(key)
+                for key in (
+                    "id",
+                    "access_id",
+                    "access_type",
+                    "source_row",
+                    "source_sha256",
+                    "original",
+                    "refs",
+                    "status",
+                )
+            }
+        )
     if row["status"] != "confirmed":
         st.warning(
             LABELS[row["status"]] + ". No se puede abrir una ficha con identidad confirmada."
@@ -154,9 +165,16 @@ def render(*, technical=False):
         st.session_state["postal_open"] = (choice, ref)
         st.session_state["fiche_route_" + "_".join((code, "cp", ref))] = ("cp", ref)
     opened = st.session_state.get("postal_open")
+    if (
+        not technical
+        and ref is not None
+        and st.session_state.get("postal_dismissed") != (choice, ref)
+    ):
+        opened = (choice, ref)
     if opened != (choice, ref):
         return
     if st.button("Volver a los resultados"):
+        st.session_state["postal_dismissed"] = (choice, ref)
         st.session_state.pop("postal_open", None)
         st.rerun()
     if technical:
@@ -164,4 +182,13 @@ def render(*, technical=False):
     else:
         from .commercial_catalog_view import render_fiche
 
-    render_fiche(code, postal.NAMES[code], ref, postal=row)
+    if technical:
+        render_fiche(code, postal.NAMES[code], ref, postal=row)
+    else:
+        from .commercial_map import render as render_map
+
+        map_panel, fiche_panel = st.columns([0.65, 0.35], gap="medium")
+        with map_panel:
+            render_map(code, ref, "postal_map_" + choice + "_" + ref)
+        with fiche_panel:
+            render_fiche(code, postal.NAMES[code], ref, postal=row)

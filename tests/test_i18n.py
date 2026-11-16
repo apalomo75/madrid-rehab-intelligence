@@ -171,7 +171,7 @@ class PublicLanguageTests(unittest.TestCase):
         for language in ["EN", "ES"]:
             self.switch(app, language)
             self.assertEqual(app.session_state["fiche_identity"], identity)
-            self.assertEqual(app.selectbox(key=prefix + "_list_page").value, 1)
+            self.assertEqual(app.session_state[prefix + "_saved_page"], 1)
             self.assertEqual(app.selectbox(key="catalog_municipality").value, "28079")
             self.assertEqual(app.selectbox(key="catalog_district").value, "11")
             self.assertTrue(app.checkbox(key="priority_28079_rehabilita").value)
@@ -186,7 +186,7 @@ class PublicLanguageTests(unittest.TestCase):
                 "Explore properties" if language == "EN" else "Explorar inmuebles",
             )
         self.switch(app, "EN")
-        next(b for b in app.button if b.label == "Back to map").click().run()
+        next(b for b in app.button if b.label == "Back to the list").click().run()
         self.assertIsNone(app.session_state["fiche_identity"])
         self.assertEqual(app.selectbox(key=prefix + "_list_page").value, 1)
 
@@ -237,7 +237,14 @@ class PublicLanguageTests(unittest.TestCase):
 
     def test_about_and_public_restrictions(self):
         app = self.app(public="1")
+        prtr = app.checkbox(key="priority_28079_prtr")
+        self.assertEqual(prtr.label, "Ayudas NextGenerationEU")
+        self.assertEqual(prtr.proto.help, i18n.MESSAGES["filters.prtr_help"]["es"])
+        self.assertTrue(prtr.disabled)
         self.switch(app, "EN")
+        prtr = app.checkbox(key="priority_28079_prtr")
+        self.assertEqual(prtr.label, "EU recovery grants (NextGenerationEU)")
+        self.assertEqual(prtr.proto.help, i18n.MESSAGES["filters.prtr_help"]["en"])
         self.assertTrue(app.checkbox(key="priority_28079_rehabilita").disabled)
         self.assertTrue(app.checkbox(key="priority_28079_prtr").disabled)
         self.assertTrue(any("External publication blocked" in w.value for w in app.warning))

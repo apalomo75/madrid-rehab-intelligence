@@ -26,6 +26,7 @@ def render(code, name, initial_ref=""):
         if col.checkbox(
             label,
             key="priority_" + code + "_" + key,
+            help=t("filters.prtr_help") if key == "prtr" else None,
             disabled=catalog.mode() == "public" and key in filters.restricted(),
         ):
             selected.append(key)
@@ -66,7 +67,6 @@ def render(code, name, initial_ref=""):
     ref = st.session_state.get(refkey, "")
     st.session_state["fiche_identity"] = None
     st.session_state["fiche_sections"] = {}
-    st.metric("Inmuebles encontrados", f"{len(index):,}")
     st.caption(
         "Se cuentan parcelas catastrales distintas, no necesariamente edificios únicos. Mapa y lista muestran páginas del mismo conjunto."
     )
@@ -86,24 +86,26 @@ def render(code, name, initial_ref=""):
             "No hay resultados disponibles para esta combinación. Una fuente no integrada o restringida no acredita ausencia de antecedentes."
         )
         return
-    zone = "all"
-    with st.expander("Explorar una zona del mapa"):
-        zone = st.selectbox(
-            "Explorar área",
-            ["all", *sorted(index.zone.unique())],
-            format_func=lambda z: t("explore.overview")
-            if z == "all"
-            else t("explore.area_label", area=z),
-            key=prefix + "_area",
+    map_panel, fiche_panel = st.columns([0.65, 0.35], gap="medium")
+    with map_panel:
+        zone = "all"
+        with st.expander("Explorar una zona del mapa"):
+            zone = st.selectbox(
+                "Explorar área",
+                ["all", *sorted(index.zone.unique())],
+                format_func=lambda z: t("explore.overview")
+                if z == "all"
+                else t("explore.area_label", area=z),
+                key=prefix + "_area",
+            )
+            st.caption("Áreas de navegación para acotar el mapa; no son barrios oficiales.")
+        visible_index = index if zone == "all" else index[index.zone.eq(zone)]
+        map_page = st.selectbox(
+            "Página del mapa",
+            range(math.ceil(len(visible_index) / PAGE_SIZE)),
+            format_func=lambda n: str(n + 1),
+            key=prefix + "_map_page_" + zone,
         )
-        st.caption("Áreas de navegación para acotar el mapa; no son barrios oficiales.")
-    visible_index = index if zone == "all" else index[index.zone.eq(zone)]
-    map_page = st.selectbox(
-        "Página del mapa",
-        range(math.ceil(len(visible_index) / PAGE_SIZE)),
-        format_func=lambda n: str(n + 1),
-        key=prefix + "_map_page_" + zone,
-    )
     refs = visible_index.parcel_ref14.iloc[
         map_page * PAGE_SIZE : (map_page + 1) * PAGE_SIZE
     ].tolist()
@@ -119,53 +121,83 @@ def render(code, name, initial_ref=""):
             st.session_state[refkey] = value
             st.session_state.pop("fiche_route_origin", None)
 
-    st.pydeck_chart(
-        geometry_deck(
-            frame, "unit_id", 12 if code == "28079" else 13, selected=ref, preserve_geometry=True
-        ),
-        key=mapkey,
-        on_select=select_map,
-        selection_mode="single-object",
-        height=480,
-    )
-    st.caption(
-        f"{len(frame):,} parcelas en esta página del mapa; máximo 500 por carga. La lista permite recorrer todo el conjunto filtrado."
-    )
-    st.subheader("Lista de inmuebles")
-    page = st.selectbox(
-        "Página de inmuebles",
-        range(math.ceil(len(index) / 10)),
-        format_func=lambda n: str(n + 1),
-        key=prefix + "_list_page",
-    )
-    rows = index.iloc[page * 10 : (page + 1) * 10]
-    details = filters.list_details(code, rows.parcel_ref14)
+    if ref and ref not in refs and index.parcel_ref14.eq(ref).any():
+        extra = demo.read(root, relative, [("parcel_ref14", "==", ref)])
+        extra = extra[extra.usable_geometry].copy()
+        extra["unit_id"] = extra.parcel_ref14
+        import pandas as pd
 
-    def open_fiche(identifier):
-        st.session_state[refkey] = identifier
-        st.session_state.pop("fiche_route_origin", None)
+        frame = pd.concat([frame.iloc[: PAGE_SIZE - 1], extra.iloc[:1]], ignore_index=True)
+    with map_panel:
+        from .commercial_map import selected_deck
 
-    for _, row in rows.iterrows():
-        st.write(details[row.parcel_ref14].get("address", "Parcela documentada en " + name))
-        st.caption(" · ".join(filters.evidence_labels(row)))
-        st.button(
-            "Abrir ficha",
-            key=prefix + "_open_" + row.parcel_ref14,
-            on_click=open_fiche,
-            args=(row.parcel_ref14,),
+        deck = (
+            selected_deck(frame, ref)
+            if ref and frame.parcel_ref14.eq(ref).any()
+            else geometry_deck(
+                frame, "unit_id", 12 if code == "28079" else 13, preserve_geometry=True
+            )
+            if not frame.empty
+            else None
         )
-    st.session_state["fiche_identity"] = None
-    if ref and index.parcel_ref14.eq(ref).any():
-        st.subheader("Ficha del inmueble")
+        if deck is None:
+            st.info(t("ux.no_geometry"))
+        else:
+            st.pydeck_chart(
+                deck,
+                key=mapkey,
+                on_select=select_map,
+                selection_mode="single-object",
+                height=480,
+            )
+        st.caption(
+            f"{len(frame):,} parcelas en esta página del mapa; máximo 500 por carga. La lista permite recorrer todo el conjunto filtrado."
+        )
+    with fiche_panel:
+        with st.container(height=680, border=False):
+            st.metric("Inmuebles encontrados", f"{len(index):,}")
+            if not ref or not index.parcel_ref14.eq(ref).any():
+                st.subheader("Lista de inmuebles")
+                st.session_state.setdefault(
+                    prefix + "_list_page", st.session_state.get(prefix + "_saved_page", 0)
+                )
+                page = st.selectbox(
+                    "Página de inmuebles",
+                    range(math.ceil(len(index) / 10)),
+                    format_func=lambda n: str(n + 1),
+                    key=prefix + "_list_page",
+                )
+                st.session_state[prefix + "_saved_page"] = page
+                rows = index.iloc[page * 10 : (page + 1) * 10]
+                details = filters.list_details(code, rows.parcel_ref14)
 
-        def back():
-            st.session_state[refkey] = ""
-            st.session_state.pop("fiche_route_origin", None)
+                def open_fiche(identifier):
+                    st.session_state[refkey] = identifier
+                    st.session_state.pop("fiche_route_origin", None)
 
-        st.button("Volver al mapa", on_click=back)
-        from .commercial_catalog_view import render_fiche
+                for _, row in rows.iterrows():
+                    st.write(
+                        details[row.parcel_ref14].get("address", "Parcela documentada en " + name)
+                    )
+                    st.caption(" · ".join(filters.evidence_labels(row)))
+                    st.button(
+                        "Abrir ficha",
+                        key=prefix + "_open_" + row.parcel_ref14,
+                        on_click=open_fiche,
+                        args=(row.parcel_ref14,),
+                    )
+            st.session_state["fiche_identity"] = None
+            if ref and index.parcel_ref14.eq(ref).any():
+                st.subheader("Ficha del inmueble")
 
-        render_fiche(code, name, ref)
+                def back():
+                    st.session_state[refkey] = ""
+                    st.session_state.pop("fiche_route_origin", None)
+
+                st.button("Volver a la lista", on_click=back)
+                from .commercial_catalog_view import render_fiche
+
+                render_fiche(code, name, ref)
     from . import production_bundle as bundle
 
     if code == "28079" and not bundle.active():

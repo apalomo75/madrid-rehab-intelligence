@@ -165,6 +165,14 @@ def _render_commercial_and_technical(
     )
     st.session_state["commercial_fiche_timings"] = timings
     if demo.private() or public_catalog:
+        from .i18n import t
+
+        @st.dialog(t("ux.expand"), width="large")
+        def expanded():
+            render(model, errors)
+
+        if st.button(t("ux.expand"), key="commercial_expand_" + identifier):
+            expanded()
         render(model, errors)
     else:
         st.subheader(model.title)

@@ -33,7 +33,7 @@ class Session26Tests(unittest.TestCase):
         next(b for b in app.button if b.label == "Abrir ficha").click().run()
         self.assertFalse(app.exception)
         self.assertIsNotNone(app.session_state["fiche_identity"])
-        next(b for b in app.button if b.label == "Volver al mapa").click().run()
+        next(b for b in app.button if b.label == "Volver a la lista").click().run()
         self.assertTrue(app.checkbox(key="priority_28079_rehabilita").value)
         app.radio(key="city_navigation").set_value("Acerca del proyecto").run()
         self.assertTrue(any("experimental" in i.value for i in app.info))

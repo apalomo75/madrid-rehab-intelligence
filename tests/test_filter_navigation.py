@@ -22,7 +22,7 @@ class FilterNavigationTests(unittest.TestCase):
             self.assertFalse(app.exception)
             self.assertEqual(app.metric[0].value, count)
             self.assertIsNotNone(app.session_state["fiche_identity"])
-            next(b for b in app.button if b.label == "Volver al mapa").click().run()
+            next(b for b in app.button if b.label == "Volver a la lista").click().run()
             self.assertFalse(app.exception)
             self.assertTrue(app.checkbox(key="priority_28079_rehabilita").value)
             self.assertEqual(app.metric[0].value, count)

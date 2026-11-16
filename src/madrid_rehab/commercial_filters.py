@@ -11,7 +11,7 @@ LABELS = {
     "energy": "Solo CEEE",
     "ite": "Solo ITE/IEE",
     "rehabilita": "Solo Plan Rehabilita",
-    "prtr": "Solo ayudas PRTR",
+    "prtr": "Ayudas NextGenerationEU",
 }
 RESTRICTED = {"rehabilita", "prtr"}
 
