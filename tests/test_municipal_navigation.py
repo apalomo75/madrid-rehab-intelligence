@@ -49,14 +49,13 @@ class MunicipalNavigationTests(unittest.TestCase):
         with patch.dict(os.environ, {"MADRID_REHAB_DEMO": "0", "MADRID_REHAB_PUBLIC": "1"}):
             app = AppTest.from_file("src/madrid_rehab/app.py", default_timeout=90).run()
             self.assertFalse(app.exception)
-            self.assertEqual(app.radio(key="city_navigation").value, "Mapa comercial")
-            app.radio(key="city_navigation").set_value("Explorar municipios").run()
+            self.assertEqual(app.radio(key="city_navigation").value, "Explorar inmuebles")
             selector = next(x for x in app.selectbox if x.label == "Municipio")
             self.assertEqual(
                 set(selector.options),
                 {"Madrid", "Getafe", "Móstoles", "Leganés", "Alcorcón", "Alcalá de Henares"},
             )
-            self.assertTrue(any(x.label == "Zona de exploración" for x in app.selectbox))
+            self.assertTrue(any(x.label == "Distrito" for x in app.selectbox))
 
     def test_map_identity_allowlist(self):
         def event(ref):

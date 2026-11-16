@@ -163,27 +163,25 @@ def main():
         </style>""",
         unsafe_allow_html=True,
     )
+    from .i18n import language_selector
+
+    language_selector()
     if os.environ.get("MADRID_REHAB_DEMO", "0") == "1":
-        mode = st.sidebar.radio("Modo", ["Demostración", "Analista"])
+        mode = st.sidebar.radio("Modo", ["Demostración", "Analista"], key="demo_mode")
         if mode == "Demostración":
             from .demo import render
 
             render()
             return
-    view = st.sidebar.radio(
-        "Navegación",
-        [
-            "Mapa comercial",
-            "Buscar por dirección",
-            "Consulta técnica · direcciones",
-            "Explorar municipios",
-            "Plan Rehabilita · Ayuntamiento de Madrid",
-            "Madrid capital",
-            "Comunidad de Madrid · Municipios y cobertura",
-        ],
-        key="city_navigation",
-    )
-    if view == "Mapa comercial":
+    from .navigation import main_view
+
+    view = main_view()
+    if view == "Acerca del proyecto":
+        from .about_view import render
+
+        render()
+        return
+    if view == "Explorar inmuebles":
         from .commercial_catalog_view import render
 
         render()

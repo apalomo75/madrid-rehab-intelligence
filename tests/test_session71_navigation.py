@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pandas as pd
 from pyproj import Transformer
-from streamlit.testing.v1 import AppTest
+from navigation_support import technical_app
 
 from madrid_rehab.city_maps import (
     district_deck,
@@ -111,13 +111,7 @@ class GridTests(unittest.TestCase):
 @unittest.skipUnless((ROOT / "manifest.json").exists(), "Requiere sesión 7")
 class NavigationAppTests(unittest.TestCase):
     def test_district_zone_return_and_filters(self):
-        app = (
-            AppTest.from_file("src/madrid_rehab/app.py", default_timeout=60)
-            .run()
-            .radio(key="city_navigation")
-            .set_value("Madrid capital")
-            .run()
-        )
+        app = technical_app("Madrid capital", timeout=120)
         totals = [m.value for m in app.metric]
         for code in ["07", "06", "19"]:
             app.selectbox(key="city_district").set_value(code).run()

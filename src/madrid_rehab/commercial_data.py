@@ -202,13 +202,19 @@ def load_fiche(code, name, identifier, objects, kind="cp", postal=None, public_c
             retrieve("energy", energy)
             if not (energy_view.root_path() / f"municipalities/{code}/links.parquet").exists():
                 states["energy"] = Quality.UNCOVERED
-            retrieve("grants", lambda: grant_records(code, identifier))
+            if demo.private():
+                retrieve("grants", lambda: grant_records(code, identifier))
+            else:
+                states["grants"] = Quality.UNAVAILABLE
             from .plan_rehabilita_store import parcel_records
 
-            retrieve(
-                "municipal_grants",
-                lambda: parcel_records(code, identifier, kind, public_catalog=public_catalog),
-            )
+            if demo.private():
+                retrieve(
+                    "municipal_grants",
+                    lambda: parcel_records(code, identifier, kind, public_catalog=public_catalog),
+                )
+            else:
+                states["municipal_grants"] = Quality.UNAVAILABLE
         else:
             for key in ("accesses", "events", "energy", "grants", "municipal_grants"):
                 states[key] = Quality.UNAVAILABLE

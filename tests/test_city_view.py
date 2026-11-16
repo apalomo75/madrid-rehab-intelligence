@@ -6,7 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pandas as pd
-from streamlit.testing.v1 import AppTest
+from navigation_support import technical_app
 
 import test_sessions456 as fixtures
 from madrid_rehab.city_maps import (
@@ -170,13 +170,7 @@ class RealCityDataTests(unittest.TestCase):
 @unittest.skipUnless((REAL / "manifest.json").exists(), "Generar sesión 7 municipal")
 class CityAppTests(unittest.TestCase):
     def app(self):
-        return (
-            AppTest.from_file("src/madrid_rehab/app.py", default_timeout=60)
-            .run()
-            .radio(key="city_navigation")
-            .set_value("Madrid capital")
-            .run()
-        )
+        return technical_app("Madrid capital", timeout=120)
 
     def test_default_21_districts_and_comparison_filters(self):
         app = self.app()

@@ -64,7 +64,10 @@ class RecDiagnosticTests(unittest.TestCase):
 @unittest.skipUnless((demo.ENERGY / "manifest.json").exists(), "Real snapshots unavailable")
 class DemoTests(unittest.TestCase):
     def setUp(self):
-        self.env = patch.dict(os.environ, {"MADRID_REHAB_PUBLIC": "0", "MADRID_REHAB_DEMO": "1"})
+        self.env = patch.dict(
+            os.environ,
+            {"MADRID_REHAB_PUBLIC": "0", "MADRID_REHAB_DEMO": "1", "MADRID_REHAB_DEV": "1"},
+        )
         self.env.start()
         self.addCleanup(self.env.stop)
 
@@ -152,7 +155,7 @@ class DemoTests(unittest.TestCase):
         app.selectbox[1].select("28065").run()
         self.assertFalse(app.exception)
         self.assertTrue(any("Cobertura catastral parcial" in x.value for x in app.caption))
-        app.sidebar.radio[0].set_value("Analista").run()
-        app.radio(key="city_navigation").set_value("Madrid capital").run()
+        app.radio(key="demo_mode").set_value("Analista").run()
+        app.selectbox(key="technical_navigation").set_value("Madrid capital").run()
         self.assertFalse(app.exception)
         self.assertTrue(any("Madrid capital" in x.value for x in app.title))

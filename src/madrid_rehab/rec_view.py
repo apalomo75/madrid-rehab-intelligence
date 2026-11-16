@@ -3,7 +3,7 @@
 import time
 
 import pandas as pd
-import streamlit as st
+from .i18n import ui as st
 
 from .rec_client import Policy, RecError, consult, official_url, validate_ndp
 

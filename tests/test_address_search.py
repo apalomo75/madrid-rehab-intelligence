@@ -211,12 +211,13 @@ class RealAddressTests(unittest.TestCase):
         )
         self.environment.start()
         self.addCleanup(self.environment.stop)
+        if technical:
+            return AppTest.from_string(
+                "from madrid_rehab.address_view import render\nrender(technical=True)",
+                default_timeout=120,
+            ).run()
         app = AppTest.from_file("src/madrid_rehab/app.py", default_timeout=120).run()
-        return (
-            app.radio(key="city_navigation")
-            .set_value("Consulta técnica · direcciones" if technical else "Buscar por dirección")
-            .run()
-        )
+        return app.radio(key="city_navigation").set_value("Buscar por dirección").run()
 
     def test_real_map_free_fiche_return_and_municipal_change(self):
         app = self.make_app()

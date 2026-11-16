@@ -1,12 +1,12 @@
 """Small private municipal catalogue; no financial sums by parcel or map location."""
 
-import streamlit as st
+from .i18n import ui as st
 
 from . import demo
 from .plan_rehabilita_store import catalogue
 
 
-def render():
+def render(*, show_map=True):
     st.title("Plan Rehabilita · Ayuntamiento de Madrid")
     if not demo.private():
         st.info(
@@ -83,7 +83,7 @@ def render():
         width="stretch",
     )
     confirmed = detail[detail.link_class.eq("A")]
-    if not confirmed.empty:
+    if show_map and not confirmed.empty:
         import pydeck as pdk
         from pyproj import Transformer
 

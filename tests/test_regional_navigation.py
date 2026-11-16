@@ -9,6 +9,7 @@ from unittest.mock import patch
 import pandas as pd
 import shapely as sh
 from streamlit.testing.v1 import AppTest
+from navigation_support import technical_app
 
 from madrid_rehab.regional_view import (
     integrated_codes,
@@ -70,19 +71,14 @@ class RegionalNavigation(unittest.TestCase):
             self.assertEqual(energy["inputs"][str(path)], digest(path))
 
     def test_actual_entry_madrid_regional_and_return(self):
-        app = AppTest.from_file("src/madrid_rehab/app.py", default_timeout=120).run()
-        self.assertFalse(app.exception)
-        navigation = next(x for x in app.radio if x.key == "city_navigation")
-        navigation.set_value("Comunidad de Madrid · Municipios y cobertura").run()
+        app = technical_app("Comunidad de Madrid · Municipios y cobertura")
         self.assertFalse(app.exception)
         next(x for x in app.selectbox if x.key == "regional_municipality").set_value("28079").run()
         next(
             x for x in app.button if x.label == "Abrir fichas de Madrid capital · NDP y REC"
         ).click().run()
         self.assertFalse(app.exception)
-        self.assertEqual(
-            next(x for x in app.radio if x.key == "city_navigation").value, "Madrid capital"
-        )
+        self.assertEqual(app.selectbox(key="technical_navigation").value, "Madrid capital")
         self.assertTrue(any("Madrid capital" in x.value for x in app.title))
 
     def test_real_streamlit_selector_excludes_unintegrated(self):

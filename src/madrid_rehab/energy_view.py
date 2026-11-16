@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 
 import pandas as pd
-import streamlit as st
+from .i18n import ui as st
 
 from .ingest import digest
 from .regional_energy import DEFAULT

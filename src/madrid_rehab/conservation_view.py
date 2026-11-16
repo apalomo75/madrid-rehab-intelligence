@@ -9,7 +9,7 @@ import tracemalloc
 from pathlib import Path
 
 import pandas as pd
-import streamlit as st
+from .i18n import ui as st
 
 from .conservation import DEFAULT, POLICY
 from .ingest import digest

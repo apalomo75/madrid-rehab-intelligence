@@ -2,7 +2,7 @@
 
 import json
 
-import streamlit as st
+from .i18n import ui as st
 
 from . import address_search as postal
 

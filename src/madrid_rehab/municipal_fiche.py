@@ -5,7 +5,7 @@ import logging
 from contextlib import contextmanager
 
 import pandas as pd
-import streamlit as st
+from .i18n import ui as st
 import shapely as sh
 
 SECTIONS = (

@@ -177,6 +177,11 @@ def render_territories(selector_key):
 
 
 def render_explorer(code, name, initial_ref="", *, commercial=False):
+    if commercial:
+        from .commercial_explorer import render
+
+        render(code, name, initial_ref)
+        return
     from .regional_view import geometry_deck
 
     mode = (
@@ -194,20 +199,42 @@ def render_explorer(code, name, initial_ref="", *, commercial=False):
     if commercial:
         from . import commercial_catalog_store as catalog
 
-        labels = {
-            "Todas las evidencias": None,
-            "Construcción residencial": "construction",
-            "Energía": "energy",
-            "Conservación / obligaciones": "administrative",
-            "PRTR": "prtr",
-            "Plan Rehabilita": "rehabilita",
-        }
-        chosen = st.selectbox("Filtrar por evidencia", list(labels), key="catalog_evidence_" + code)
-        evidence = labels[chosen]
-        index = catalog.parcel_index(code, evidence)
-        st.caption(
-            f"{len(index):,} parcelas admitidas en este filtro. Azul: construcción; ámbar: energía sin construcción suficiente; violeta: antecedentes o ayudas sin las anteriores."
+        from . import commercial_filters as filters
+
+        def reset_filters():
+            for key in filters.LABELS:
+                st.session_state["priority_" + code + "_" + key] = False
+            st.session_state["priority_logic_" + code] = "OR"
+
+        selected = []
+        for col, (key, label) in zip(st.columns(4), filters.LABELS.items()):
+            with col:
+                if st.checkbox(
+                    label,
+                    key="priority_" + code + "_" + key,
+                    disabled=catalog.mode() == "public" and key in filters.RESTRICTED,
+                ):
+                    selected.append(key)
+        logic = st.radio(
+            "Combinar evidencias",
+            ["OR", "AND"],
+            horizontal=True,
+            format_func=lambda x: "Al menos una (OR)" if x == "OR" else "Todas (AND)",
+            key="priority_logic_" + code,
         )
+        st.button("Limpiar filtros", on_click=reset_filters)
+        evidence = filters.context_key(selected, logic)
+        index = filters.query(code, selected, logic)
+        st.metric("Parcelas documentadas que cumplen los filtros", f"{len(index):,}")
+        st.caption(
+            "El mapa agrupa estas mismas parcelas por zonas; cada página carga como máximo 500 geometrías."
+        )
+        if "ite" in selected:
+            st.info(
+                "No hay resultados reales de inspección integrados. Se muestran obligaciones ITE/IEE y menciones indirectas explícitas en órdenes; no acreditan estado físico actual."
+            )
+        if catalog.mode() == "public":
+            st.warning(filters.PUBLIC_BLOCK)
     else:
         index = object_index(code, kind)
     if index.empty:
@@ -288,7 +315,11 @@ def render_explorer(code, name, initial_ref="", *, commercial=False):
             on_change=search_changed,
         )
     with clear:
-        st.button("Limpiar selección", key=prefix + "_clear", on_click=clear_object)
+        st.button(
+            "Volver al mapa" if commercial else "Limpiar selección",
+            key=prefix + "_clear",
+            on_click=clear_object,
+        )
     ref = st.session_state[prefix + "_selected"]
     zones = sorted(index.zone.unique())
     st.session_state["fiche_identity"] = None
@@ -390,6 +421,59 @@ def render_explorer(code, name, initial_ref="", *, commercial=False):
             height=600,
         )
     with fiche_col:
+        if commercial:
+            st.subheader("Inmuebles documentados")
+            st.caption(
+                "Lista del conjunto filtrado"
+                if zone == "Vista general"
+                else "Lista de la zona seleccionada dentro del conjunto filtrado"
+            )
+            listing = index if zone == "Vista general" else index[index.zone.eq(zone)]
+            list_page = st.selectbox(
+                "Página de inmuebles",
+                range(max(1, math.ceil(len(listing) / 10))),
+                format_func=lambda n: str(n + 1),
+                key=prefix + "_list_page",
+            )
+            visible = listing.iloc[list_page * 10 : (list_page + 1) * 10]
+            details = filters.list_details(code, visible.parcel_ref14)
+
+            def open_list(identifier):
+                st.session_state[selection_key] = identifier
+                st.session_state[prefix + "_selected"] = identifier
+                st.session_state.pop("fiche_route_origin", None)
+
+            with st.expander(
+                f"Lista · {len(listing):,} parcelas · 10 por página", expanded=cp.empty
+            ):
+                for _, item in visible.iterrows():
+                    identifier = item.parcel_ref14
+                    st.write(
+                        details[identifier].get(
+                            "address", "Localización catastral · zona " + item.zone
+                        )
+                    )
+                    st.caption(
+                        name
+                        + (
+                            " · " + details[identifier]["district"]
+                            if "district" in details[identifier]
+                            else ""
+                        )
+                        + " · "
+                        + " · ".join(filters.evidence_labels(item))
+                        + " · Ref. "
+                        + identifier
+                    )
+                    st.button(
+                        "Abrir ficha",
+                        key=prefix + "_open_" + identifier,
+                        on_click=open_list,
+                        args=(identifier,),
+                    )
+            st.caption(
+                "Seleccionar una ficha mantiene los filtros y las páginas. Limpiar selección permite volver al mapa."
+            )
         if cp.empty:
             st.info("Selecciona un objeto en el mapa o busca su identificador catastral.")
             if ref:

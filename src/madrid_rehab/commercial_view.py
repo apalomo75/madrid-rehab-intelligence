@@ -3,7 +3,7 @@
 from collections import Counter
 
 import pandas as pd
-import streamlit as st
+from .i18n import ui as st
 
 from .commercial_fiche import Quality
 
