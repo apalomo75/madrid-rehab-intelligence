@@ -6,30 +6,104 @@ from .i18n import t, ui as st
 
 from . import commercial_catalog_store as catalog, commercial_filters as filters, demo
 from .commercial_geography import district_names, restrict
+from . import energy_scope, neighborhoods
+from .map_pagination import page_count, page_refs
 from .municipal_navigation import PAGE_SIZE, object_source, picked
 
 
-def render(code, name, initial_ref=""):
+def render(code, name, initial_ref="", *, district_panel=None, neighborhood_panel=None):
     from .regional_view import geometry_deck
 
     district = "all"
+    neighborhood = "all"
+
+    def change_district():
+        st.session_state["catalog_neighborhood"] = "all"
+
     if code == "28079":
         names = district_names()
-        district = st.selectbox(
+        district = (district_panel or st).selectbox(
             "Distrito",
             ["all", *names],
             key="catalog_district",
+            on_change=change_district,
             format_func=lambda c: "Todos los distritos" if c == "all" else names[c],
         )
+        if neighborhoods.available():
+            neighborhood_names = neighborhoods.names(district)
+            if st.session_state.get("catalog_neighborhood", "all") not in {
+                "all",
+                *neighborhood_names,
+            }:
+                st.session_state["catalog_neighborhood"] = "all"
+            neighborhood = (neighborhood_panel or st).selectbox(
+                t("geo.neighborhood"),
+                ["all", *neighborhood_names],
+                key="catalog_neighborhood",
+                disabled=district == "all",
+                format_func=lambda value: t("geo.all_neighborhoods")
+                if value == "all"
+                else neighborhood_names[value],
+                help=t("geo.select_district"),
+            )
+            st.caption(t("geo.attribution"))
+    scope_key = "energy_scope_" + code
+    energy_key = "priority_" + code + "_energy"
+    st.session_state.setdefault(scope_key, "any")
+    if st.session_state[scope_key] == "all":
+        st.session_state[scope_key] = "any"
+
+    def toggle_energy():
+        if not st.session_state[energy_key]:
+            st.session_state[scope_key] = "any"
+
+    def select_scope():
+        if st.session_state[scope_key] != "any":
+            st.session_state[energy_key] = True
+
+    # Visually hide only the settings button's text; its accessible name stays intact.
+    st.html("""<style>
+    .st-key-ceee_settings button[data-testid="stPopoverButton"] p {
+        position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+        overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
+    }
+    </style>""")
     selected = []
     for col, (key, label) in zip(st.columns(4), filters.LABELS.items()):
-        if col.checkbox(
-            label,
-            key="priority_" + code + "_" + key,
-            help=t("filters.prtr_help") if key == "prtr" else None,
-            disabled=catalog.mode() == "public" and key in filters.restricted(),
-        ):
-            selected.append(key)
+        with col:
+            checkbox_panel, settings_panel = st.columns([3, 1]) if key == "energy" else (col, None)
+            if checkbox_panel.checkbox(
+                label,
+                key="priority_" + code + "_" + key,
+                on_change=toggle_energy if key == "energy" else None,
+                help=t("filters.prtr_help") if key == "prtr" else None,
+                disabled=catalog.mode() == "public" and key in filters.restricted(),
+            ):
+                selected.append(key)
+            if settings_panel is not None:
+                with settings_panel, st.container(key="ceee_settings"):
+                    with st.popover(
+                        t("scope.settings"),
+                        icon=":material/tune:",
+                        use_container_width=False,
+                        help=t("scope.settings"),
+                    ):
+                        st.selectbox(
+                            t("scope.settings"),
+                            [v for v in energy_scope.OPTIONS if v != "all"],
+                            format_func=lambda value: t("scope." + value),
+                            key=scope_key,
+                            on_change=select_scope,
+                        )
+    scope = st.session_state[scope_key] if "energy" in selected else "any"
+    prtr_program = "any"
+    if "prtr" in selected and catalog.mode() != "public":
+        prtr_program = st.selectbox(
+            t("prtr.programme"),
+            ["any", "P1", "P3", "P4", "P5"],
+            format_func=lambda value: t("prtr." + value),
+            key="prtr_program_" + code,
+        )
     logic = st.radio(
         "Combinar evidencias",
         ["OR", "AND"],
@@ -42,9 +116,14 @@ def render(code, name, initial_ref=""):
         for key in filters.LABELS:
             st.session_state["priority_" + code + "_" + key] = False
         st.session_state["priority_logic_" + code] = "OR"
+        st.session_state["energy_scope_" + code] = "any"
+        st.session_state["prtr_program_" + code] = "any"
 
     st.button("Limpiar filtros", on_click=reset)
-    index = restrict(filters.query(code, selected, logic), district)
+    index = restrict(
+        filters.query(code, selected, logic, scope=scope, prtr_program=prtr_program), district
+    )
+    index = neighborhoods.restrict(index, district, neighborhood)
     prefix = (
         "municipal_"
         + code
@@ -53,11 +132,16 @@ def render(code, name, initial_ref=""):
         + "_"
         + filters.context_key(selected, logic)
     )
-    context = (code, prefix, district)
+    context = (code, prefix, district, scope, prtr_program, neighborhood)
     if st.session_state.get("commercial_context") != context:
+        previous_context = st.session_state.get("commercial_context")
+        previous_prefix = previous_context[1] if previous_context else prefix
+        previous_ref = st.session_state.get(previous_prefix + "_selected", "")
         for key in list(st.session_state):
             if key.startswith(prefix + "_"):
                 del st.session_state[key]
+        if previous_ref and index.parcel_ref14.iloc[:PAGE_SIZE].eq(previous_ref).any():
+            st.session_state[prefix + "_selected"] = previous_ref
         st.session_state["commercial_context"] = context
         st.session_state.pop("fiche_route_origin", None)
     refkey = prefix + "_selected"
@@ -65,6 +149,8 @@ def render(code, name, initial_ref=""):
         st.session_state[refkey] = initial_ref
         st.session_state[prefix + "_initial"] = initial_ref
     ref = st.session_state.get(refkey, "")
+    if ref and not index.parcel_ref14.eq(ref).any():
+        st.session_state[refkey] = ref = ""
     st.session_state["fiche_identity"] = None
     st.session_state["fiche_sections"] = {}
     st.caption(
@@ -74,7 +160,7 @@ def render(code, name, initial_ref=""):
         from . import production_bundle as bundle
 
         if bundle.active():
-            st.caption(t("bundle.scope"))
+            st.caption(t("prtr.bundle_scope" if bundle.allowed_prtr() else "bundle.scope"))
         else:
             st.warning(filters.PUBLIC_BLOCK)
     if "ite" in selected:
@@ -82,38 +168,35 @@ def render(code, name, initial_ref=""):
             "Obligaciones ITE/IEE y menciones documentadas; no son resultados de inspección ni un diagnóstico del estado actual."
         )
     if index.empty:
+        st.metric("Inmuebles encontrados", "0")
         st.info(
             "No hay resultados disponibles para esta combinación. Una fuente no integrada o restringida no acredita ausencia de antecedentes."
         )
         return
     map_panel, fiche_panel = st.columns([0.65, 0.35], gap="medium")
-    with map_panel:
-        zone = "all"
-        with st.expander("Explorar una zona del mapa"):
-            zone = st.selectbox(
-                "Explorar área",
-                ["all", *sorted(index.zone.unique())],
-                format_func=lambda z: t("explore.overview")
-                if z == "all"
-                else t("explore.area_label", area=z),
-                key=prefix + "_area",
-            )
-            st.caption("Áreas de navegación para acotar el mapa; no son barrios oficiales.")
-        visible_index = index if zone == "all" else index[index.zone.eq(zone)]
-        map_page = st.selectbox(
-            "Página del mapa",
-            range(math.ceil(len(visible_index) / PAGE_SIZE)),
-            format_func=lambda n: str(n + 1),
-            key=prefix + "_map_page_" + zone,
-        )
-    refs = visible_index.parcel_ref14.iloc[
-        map_page * PAGE_SIZE : (map_page + 1) * PAGE_SIZE
-    ].tolist()
+    zone = "all"
+    page_key = prefix + "_map_page_" + zone
+    pages = page_count(len(index))
+    map_page = min(st.session_state.get(page_key, 0), pages - 1)
+    if ref:
+        # Opening a side-list result moves to its actual map page, without replacing a row.
+        positions = index.parcel_ref14.reset_index(drop=True).eq(ref)
+        map_page = int(positions[positions].index[0]) // PAGE_SIZE
+    st.session_state[page_key] = map_page
+    refs = page_refs(index, map_page)
+
+    def move_page(delta):
+        target = max(0, min(pages - 1, st.session_state[page_key] + delta))
+        st.session_state[page_key] = target
+        if st.session_state.get(refkey) not in page_refs(index, target):
+            st.session_state[refkey] = ""
+            st.session_state.pop("fiche_route_origin", None)
+
     root, relative = object_source(code, "cp")
     frame = demo.read(root, relative, [("parcel_ref14", "in", refs)])
     frame = frame[frame.usable_geometry & frame.parcel_ref14.isin(refs)].copy()
     frame["unit_id"] = frame.parcel_ref14
-    mapkey = prefix + "_map_" + district + "_" + zone + "_" + str(map_page)
+    mapkey = prefix + "_map_" + district + "_" + neighborhood + "_" + zone + "_" + str(map_page)
 
     def select_map():
         value = picked(st.session_state.get(mapkey), frame.unit_id)
@@ -121,13 +204,6 @@ def render(code, name, initial_ref=""):
             st.session_state[refkey] = value
             st.session_state.pop("fiche_route_origin", None)
 
-    if ref and ref not in refs and index.parcel_ref14.eq(ref).any():
-        extra = demo.read(root, relative, [("parcel_ref14", "==", ref)])
-        extra = extra[extra.usable_geometry].copy()
-        extra["unit_id"] = extra.parcel_ref14
-        import pandas as pd
-
-        frame = pd.concat([frame.iloc[: PAGE_SIZE - 1], extra.iloc[:1]], ignore_index=True)
     with map_panel:
         from .commercial_map import selected_deck
 
@@ -150,8 +226,28 @@ def render(code, name, initial_ref=""):
                 selection_mode="single-object",
                 height=480,
             )
-        st.caption(
-            f"{len(frame):,} parcelas en esta página del mapa; máximo 500 por carga. La lista permite recorrer todo el conjunto filtrado."
+        # Controls belong to the map column and follow the chart immediately.
+        with st.container(
+            horizontal=True, horizontal_alignment="center", vertical_alignment="center", gap="small"
+        ):
+            st.button(
+                t("map.previous"),
+                key=prefix + "_map_previous",
+                on_click=move_page,
+                args=(-1,),
+                disabled=map_page == 0,
+            )
+            st.markdown(t("map.page", page=map_page + 1, pages=pages), width="content")
+            st.button(
+                t("map.next"),
+                key=prefix + "_map_next",
+                on_click=move_page,
+                args=(1,),
+                disabled=map_page == pages - 1,
+            )
+        st.markdown(
+            "<p style='text-align:center;font-size:0.85rem'>" + t("map.limit") + "</p>",
+            unsafe_allow_html=True,
         )
     with fiche_panel:
         with st.container(height=680, border=False):
@@ -177,9 +273,9 @@ def render(code, name, initial_ref=""):
 
                 for _, row in rows.iterrows():
                     st.write(
-                        details[row.parcel_ref14].get("address", "Parcela documentada en " + name)
+                        filters.result_label(row.parcel_ref14, details[row.parcel_ref14], name)
                     )
-                    st.caption(" · ".join(filters.evidence_labels(row)))
+                    st.caption(row.parcel_ref14 + " · " + " · ".join(filters.evidence_labels(row)))
                     st.button(
                         "Abrir ficha",
                         key=prefix + "_open_" + row.parcel_ref14,

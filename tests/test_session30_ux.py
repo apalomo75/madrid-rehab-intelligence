@@ -51,9 +51,14 @@ render(model, {})
         app = AppTest.from_string(script, default_timeout=60).run()
         self.assertFalse(app.exception)
         text = "\n".join(item.value for item in app.markdown)
-        self.assertIn("2 certificados vinculados", text)
-        self.assertIn("Vivienda individual (1)", text)
-        self.assertIn("Edificio completo declarado (1)", text)
+        summary = app.dataframe[0].value
+        self.assertEqual(summary["N.º de certificados"].tolist(), [1, 1])
+        self.assertEqual(summary["Ámbito"].tolist(), ["Edificio completo", "Vivienda individual"])
+        self.assertEqual(summary["Calificación de consumo"].tolist(), ["F (1)", "A (1)"])
+        self.assertEqual(summary["Calificación de emisiones"].tolist(), ["G (1)", "B (1)"])
+        self.assertEqual(
+            sum("Los certificados individuales no acreditan" in c.value for c in app.caption), 1
+        )
         self.assertIn("case-1", text)
         self.assertIn("1,234.50", text)
         self.assertIn("No hay resultados reales sistemáticos", text)
@@ -106,13 +111,13 @@ class PublicUXTests(unittest.TestCase):
             "from madrid_rehab.city_app import main\nmain()", default_timeout=180
         ).run()
         app.selectbox(key="catalog_district").set_value("07").run()
-        app.checkbox(key="priority_28079_energy").check().run()
+        app.selectbox(key="energy_scope_28079").set_value("any").run()
         chart = json.loads(app.get("deck_gl_json_chart")[0].proto.json)
         ref = chart["layers"][0]["data"]["features"][0]["properties"]["unit_id"]
         send_chart_event(app, ref)
         self.assertEqual(app.session_state["fiche_identity"], ("28079", "cp", ref))
         self.assertEqual(app.selectbox(key="catalog_district").value, "07")
-        self.assertTrue(app.checkbox(key="priority_28079_energy").value)
+        self.assertEqual(app.selectbox(key="energy_scope_28079").value, "any")
         chart = json.loads(app.get("deck_gl_json_chart")[0].proto.json)
         highlighted = [
             f for f in chart["layers"][0]["data"]["features"] if f["properties"]["selected"]

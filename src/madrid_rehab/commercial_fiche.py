@@ -284,6 +284,11 @@ def build_model(
                 "Concesión PRTR",
                 {
                     "Programa": clean(row.programa),
+                    "Situación administrativa": clean(row.get("etapa_administrativa")),
+                    "Dirección documental": clean(row.get("direccion")),
+                    "Parcela vinculada": clean(row.get("parcel_ref14")),
+                    "Fuente original": clean(row.get("source_url"))
+                    or "https://visorrehabilitaprtrmadrid.coam.org/",
                     "Estados documentales": " · ".join(sorted(set(group.match_status))),
                     "Concesión del expediente (€)": clean(row.importe_concedido),
                     "Fecha de concesión declarada": clean(row.get("fecha_concesion")),

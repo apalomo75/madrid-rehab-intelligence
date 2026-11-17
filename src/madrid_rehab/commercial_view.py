@@ -12,7 +12,7 @@ SCOPES = {
     "individual_unit": "Vivienda individual",
     "whole_building": "Edificio completo declarado",
     "commercial_unit": "Local",
-    "unknown": "Desconocido",
+    "unknown": "Ámbito no determinado",
 }
 EVENTS = {
     "order": "Órdenes de ejecución históricas",
@@ -21,6 +21,31 @@ EVENTS = {
     "license": "Licencias",
     "declaration": "Declaraciones responsables",
 }
+
+
+def certificate_summary(records):
+    """Count unique documentary certificates within each scope, preserving rating distributions."""
+    from .i18n import t
+
+    unique = {e.entity_id: e for e in records if e.quality == Quality.PARCEL}
+    rows = []
+    for scope in ("whole_building", "individual_unit", "other", "unknown"):
+        group = [
+            e
+            for e in unique.values()
+            if (e.scope if e.scope in {"whole_building", "individual_unit", "unknown"} else "other")
+            == scope
+        ]
+        if not group:
+            continue
+        row = {t("scope.column"): t("scope." + scope), t("scope.count"): len(group)}
+        for field, key in (("Consumo", "scope.consumption"), ("Emisiones", "scope.emissions")):
+            counts = Counter(e.value.get(field) or "—" for e in group)
+            row[t(key)] = " · ".join(
+                f"{letter} ({count})" for letter, count in sorted(counts.items())
+            )
+        rows.append(row)
+    return pd.DataFrame(rows)
 
 
 def show_records(records, title):
@@ -281,26 +306,11 @@ def render(model, errors):
     st.markdown("**CEEE**")
     certificates = {e.entity_id: e for e in model.energy if e.quality == Quality.PARCEL}
     if certificates:
-        st.write(t("ux.certificates", count=len(certificates)))
-        for field in ("Consumo", "Emisiones"):
-            counts = Counter(e.value.get(field) or "—" for e in certificates.values())
-            st.write(
-                translate(field)
-                + ": "
-                + " · ".join(f"{k} ({v})" for k, v in sorted(counts.items()))
-            )
-        scopes = Counter(translate(SCOPES.get(e.scope, e.scope)) for e in certificates.values())
-        st.write(" · ".join(f"{k} ({v})" for k, v in scopes.items()))
-        dates = sorted(
-            {
-                e.value.get("Fecha declarada")
-                for e in certificates.values()
-                if e.value.get("Fecha declarada")
-            }
+        st.dataframe(
+            certificate_summary(certificates.values()), hide_index=True, use_container_width=True
         )
-        if dates:
-            st.caption(dates[0] if len(dates) == 1 else dates[0] + " — " + dates[-1])
-        st.caption(t("ux.energy_scope"))
+        if any(e.scope == "individual_unit" for e in certificates.values()):
+            st.caption(t("scope.caution"))
     else:
         st.write(
             t("ux.energy_unknown")
@@ -310,6 +320,10 @@ def render(model, errors):
     show_records(model.energy, "Consultar certificados, fechas y fuentes")
     if model.grants:
         st.markdown("**PRTR**")
+        from . import production_bundle as bundle
+
+        if bundle.allowed_prtr():
+            st.caption(bundle.metadata()["prtr_authorization"]["attribution"])
         for evidence in model.grants:
             if evidence.quality == Quality.PARCEL:
                 st.write(evidence.entity_id + " · " + str(evidence.value.get("Programa") or "—"))
@@ -318,6 +332,14 @@ def render(model, errors):
                     + ": "
                     + str(evidence.value.get("Concesión del expediente (€)"))
                 )
+                for field, key in (
+                    ("Situación administrativa", "prtr.state"),
+                    ("Dirección documental", "prtr.address"),
+                    ("Parcela vinculada", "prtr.parcel"),
+                ):
+                    if evidence.value.get(field):
+                        st.write(t(key) + ": " + str(evidence.value[field]))
+                st.link_button(t("prtr.source"), evidence.value["Fuente original"])
         st.caption(t("ux.grant_scope"))
     st.markdown("**Plan Rehabilita**")
     cases = {e.entity_id: e for e in model.municipal_grants}

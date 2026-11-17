@@ -31,14 +31,28 @@ def render():
             with st.expander("Detalle del catálogo"):
                 st.text(str(exc))
         return
-    code = st.selectbox("Municipio", list(NAMES), format_func=NAMES.get, key="catalog_municipality")
+    municipality_panel, district_panel, neighborhood_panel = st.columns(3)
+
+    def change_municipality():
+        st.session_state["catalog_district"] = "all"
+        st.session_state["catalog_neighborhood"] = "all"
+
+    code = municipality_panel.selectbox(
+        "Municipio",
+        list(NAMES),
+        format_func=NAMES.get,
+        key="catalog_municipality",
+        on_change=change_municipality,
+    )
     if code != "28079":
         st.caption(
             "Cobertura catastral parcial. Este municipio dispone de mapa de parcelas y sus fichas; no de búsqueda postal fiable."
         )
-    from .municipal_navigation import render_explorer
+    from .commercial_explorer import render as render_explorer
 
-    render_explorer(code, NAMES[code], commercial=True)
+    render_explorer(
+        code, NAMES[code], district_panel=district_panel, neighborhood_panel=neighborhood_panel
+    )
     from . import production_bundle as bundle
 
     if bundle.active():

@@ -41,7 +41,7 @@ Cada fuente tiene su propia cobertura, fecha de actualización y limitaciones. P
 - [Dirección General del Catastro](https://www.catastro.hacienda.gob.es/): productos INSPIRE; se deben aplicar las condiciones del producto de origen.
 - CEEE · Comunidad de Madrid: CC BY 4.0 según el catálogo local. Los certificados conservan su ámbito documental.
 - Conservación y callejero · Ayuntamiento de Madrid: obligaciones y antecedentes disponibles; no hay resultados reales de inspecciones integrados.
-- PRTR · visor de rehabilitación de la Comunidad de Madrid alojado en COAM; Plan Rehabilita · Ayuntamiento de Madrid, captura local facilitada por el usuario. Licencia y procedencia de reutilización pendientes de verificar; consulta bloqueada en modo público.
+- PRTR · visor de rehabilitación de la Comunidad de Madrid alojado en COAM. Su consulta pública exige autorización documentada en el paquete activo. Plan Rehabilita · Ayuntamiento de Madrid; disponible únicamente según los permisos del paquete activo.
 
 Los vínculos ambiguos no se convierten en confirmaciones. Los importes pertenecen a expedientes únicos y no se suman por parcela.
 """)

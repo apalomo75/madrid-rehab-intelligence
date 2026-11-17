@@ -507,3 +507,15 @@ PLAYWRIGHT_BROWSERS_PATH=/tmp/madrid-rehab-browser PYTHONPATH=src .venv/bin/pyth
 ```
 
 Véase [rediseño comercial S30](docs/sesion_30_rediseño_comercial.md). Revisión visual pendiente del propietario: Chromium no está disponible en este entorno. No publicar la actualización sin esa revisión y autorización.
+
+### PRTR · candidato público condicionado (sesión 32)
+
+Integración pública preparada sobre los datos existentes, sin redistribución hasta acreditar permiso específico del visor. El candidato `data/deployment/madrid_rehab_prtr_candidate_02/` está bloqueado para runtime/archivo público; `v1_02` permanece intacto. Pruebas: `PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -p test_public_prtr.py -v`. Auditoría offline: `PYTHONPATH=src .venv/bin/python tests/benchmark_public_prtr.py --candidate data/deployment/madrid_rehab_prtr_candidate_02 --output reports/session_32_prtr/revision_nueva/real_candidate.json`. Ruff: `.venv/bin/ruff check src tests`. Instalación habitual sin dependencias nuevas. Preparación, revisión, autorización y comandos exactos para Cloud en [sesión 32](docs/sesion_32_prtr_publico.md); [solicitud no enviada](docs/solicitud_reutilizacion_prtr.md).
+
+### PRTR público v1.03 · autorización comunicada por el propietario
+
+La nueva release `data/deployment/madrid_rehab_v1_03/` habilita NextGenerationEU con 5.046 expedientes y 4.378 parcelas confirmadas. Registra autorización comunicada, sin verificación documental ni documentos personales. Conserva `v1_02`, CEEE y otras restricciones. Verificación: `PYTHONPATH=src .venv/bin/python -m madrid_rehab.bundle_delivery verify --bundle-dir data/deployment/madrid_rehab_v1_03`. Prueba pública: `MADRID_REHAB_BUNDLE_DIR=data/deployment/madrid_rehab_v1_03 MADRID_REHAB_PUBLIC=1 MADRID_REHAB_OFFLINE=1 PYTHONPATH=src .venv/bin/python tests/smoke_public_prtr.py --output reports/session_33_prtr/revision_nueva/smoke.json`. Instalación, pruebas y comandos exactos para GitHub Releases/secretos Cloud en [entrega S33](docs/sesion_33_prtr_produccion.md). No se ha realizado commit, push, subida ni despliegue.
+
+### Sesión 35 · barrios oficiales y páginas del mapa
+
+Revisión local del candidato con 131 barrios oficiales de Madrid, selectores Municipio → Distrito → Barrio y paginación bajo el mapa. Comandos exactos de preparación offline, pruebas, benchmark y servidor en [docs/sesion_35_barrios_paginacion.md](docs/sesion_35_barrios_paginacion.md). El candidato `data/deployment/madrid_rehab_v1_04_candidate_01/` conserva v1_03 y sus autorizaciones; no es una publicación. No hay dependencias nuevas. Revisión visual pendiente de Chromium.

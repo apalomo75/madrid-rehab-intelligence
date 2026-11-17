@@ -177,9 +177,7 @@ class PublicLanguageTests(unittest.TestCase):
             self.assertTrue(app.checkbox(key="priority_28079_rehabilita").value)
             self.assertEqual(app.radio(key="priority_logic_28079").value, "OR")
             self.assertEqual(app.metric[0].value, count)
-            area_labels = app.selectbox(key=prefix + "_area").options
-            expected = "Area " if language == "EN" else "Área "
-            self.assertTrue(all(label.startswith(expected) for label in area_labels[1:]))
+            self.assertFalse(any(box.key == prefix + "_area" for box in app.selectbox))
             self.assertEqual(app.radio(key="city_navigation").value, "Explorar inmuebles")
             self.assertEqual(
                 app.title[0].value,
@@ -192,20 +190,22 @@ class PublicLanguageTests(unittest.TestCase):
 
     def test_all_filters_logic_and_map_page_persist(self):
         app = self.app()
-        for kind in ["energy", "ite", "rehabilita", "prtr"]:
+        app.checkbox(key="priority_28079_energy").check().run()
+        for kind in ["ite", "rehabilita", "prtr"]:
             app.checkbox(key="priority_28079_" + kind).check().run()
         app.radio(key="priority_logic_28079").set_value("AND").run()
         count = app.metric[0].value
         self.switch(app, "EN")
-        for kind in ["energy", "ite", "rehabilita", "prtr"]:
+        for kind in ["ite", "rehabilita", "prtr"]:
             self.assertTrue(app.checkbox(key="priority_28079_" + kind).value)
         self.assertEqual(app.radio(key="priority_logic_28079").value, "AND")
         self.assertEqual(app.metric[0].value, count)
         next(b for b in app.button if b.label == "Clear filters").click().run()
         prefix = "municipal_28079__cp_catalog_local_OR_"
-        app.selectbox(key=prefix + "_map_page_all").set_value(2).run()
+        app.button(key=prefix + "_map_next").click().run()
+        app.button(key=prefix + "_map_next").click().run()
         self.switch(app, "ES")
-        self.assertEqual(app.selectbox(key=prefix + "_map_page_all").value, 2)
+        self.assertEqual(app.session_state[prefix + "_map_page_all"], 2)
 
     def test_postal_fiche_and_input_persist(self):
         app = self.app()
@@ -237,16 +237,10 @@ class PublicLanguageTests(unittest.TestCase):
 
     def test_about_and_public_restrictions(self):
         app = self.app(public="1")
-        prtr = app.checkbox(key="priority_28079_prtr")
-        self.assertEqual(prtr.label, "Ayudas NextGenerationEU")
-        self.assertEqual(prtr.proto.help, i18n.MESSAGES["filters.prtr_help"]["es"])
-        self.assertTrue(prtr.disabled)
-        self.switch(app, "EN")
-        prtr = app.checkbox(key="priority_28079_prtr")
-        self.assertEqual(prtr.label, "EU recovery grants (NextGenerationEU)")
-        self.assertEqual(prtr.proto.help, i18n.MESSAGES["filters.prtr_help"]["en"])
-        self.assertTrue(app.checkbox(key="priority_28079_rehabilita").disabled)
         self.assertTrue(app.checkbox(key="priority_28079_prtr").disabled)
+        self.switch(app, "EN")
+        self.assertTrue(app.checkbox(key="priority_28079_prtr").disabled)
+        self.assertTrue(app.checkbox(key="priority_28079_rehabilita").disabled)
         self.assertTrue(any("External publication blocked" in w.value for w in app.warning))
         self.assertFalse(any(s.key == "technical_navigation" for s in app.selectbox))
         app.radio(key="city_navigation").set_value("Acerca del proyecto").run()

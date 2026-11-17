@@ -37,6 +37,9 @@ def _grant_rows(root, token, ids):
             "fecha_actualizacion",
             "identity_conflict",
             "territorial_quality",
+            "direccion",
+            "etapa_administrativa",
+            "origen",
         ],
     )
 
@@ -46,6 +49,12 @@ def grant_records(code, ref):
     from . import demo, grants_view
     from .regional_view import regional_root_path
 
+    from . import production_bundle as bundle
+
+    if bundle.active():
+        from .public_prtr import records
+
+        return records(code, ref)
     root = regional_root_path()
     links = demo.read(root, "grant_parcel_links.parquet", [("parcel_ref14", "==", ref)])
     candidates = root / "grant_spatial_candidates.parquet"
@@ -202,7 +211,9 @@ def load_fiche(code, name, identifier, objects, kind="cp", postal=None, public_c
             retrieve("energy", energy)
             if not (energy_view.root_path() / f"municipalities/{code}/links.parquet").exists():
                 states["energy"] = Quality.UNCOVERED
-            if demo.private():
+            from . import production_bundle as bundle
+
+            if demo.private() or bundle.allowed_prtr():
                 retrieve("grants", lambda: grant_records(code, identifier))
             else:
                 states["grants"] = Quality.UNAVAILABLE

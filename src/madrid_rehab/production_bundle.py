@@ -66,8 +66,12 @@ def signature():
 def _verify(token):
     directory = Path(token[0])
     meta = json.loads((directory / "manifest.json").read_text())
-    if meta["version"] != VERSION or meta["policy"]["prtr"] or not meta["policy"]["rehabilita"]:
+    if meta["version"] != VERSION or not meta["policy"]["rehabilita"]:
         raise ValueError("Incompatible public runtime policy")
+    if meta["policy"]["prtr"]:
+        from .public_prtr import validate_release
+
+        validate_release(meta)
     for name, item in meta["files"].items():
         if Path(name).is_absolute() or ".." in Path(name).parts:
             raise ValueError("Invalid runtime manifest path")
@@ -98,3 +102,7 @@ def catalogue():
 
 def allowed_plan():
     return active() and metadata()["policy"]["rehabilita"]
+
+
+def allowed_prtr():
+    return active() and metadata()["policy"].get("prtr", False)

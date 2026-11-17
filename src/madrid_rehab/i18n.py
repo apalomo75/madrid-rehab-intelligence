@@ -19,6 +19,76 @@ DEFAULT_LANGUAGE = "es"
 LANGUAGES = ("ES", "EN")
 
 MESSAGES = {
+    "geo.neighborhood": {"es": "Barrio", "en": "Neighborhood"},
+    "geo.all_neighborhoods": {"es": "Todos los barrios", "en": "All neighborhoods"},
+    "geo.select_district": {
+        "es": "Selecciona un distrito para consultar sus barrios oficiales.",
+        "en": "Select a district to browse its official neighborhoods.",
+    },
+    "geo.attribution": {
+        "es": "Origen de los datos: Ayuntamiento de Madrid · Barrios municipales · 31/08/2026. Asignación espacial por mayor superficie; no identifica edificios físicos.",
+        "en": "Data source: Ayuntamiento de Madrid · Municipal neighborhoods · 31/08/2026. Spatial allocation by largest overlap; does not identify physical buildings.",
+    },
+    "map.previous": {"es": "Anterior", "en": "Previous"},
+    "map.next": {"es": "Siguiente", "en": "Next"},
+    "map.page": {"es": "Página {page} de {pages}", "en": "Page {page} of {pages}"},
+    "map.limit": {"es": "Hasta 500 parcelas por página", "en": "Up to 500 parcels per page"},
+    "prtr.bundle_scope": {
+        "es": "Ayudas PRTR confirmadas incluidas conforme a la autorización documentada del paquete. Concesión no acredita pago ni obras ejecutadas. Conservación limitada a las órdenes históricas autorizadas.",
+        "en": "Confirmed PRTR grants included under the bundle’s documented authorization. An award does not establish payment or completed works. Maintenance is limited to authorized historical orders.",
+    },
+    "prtr.programme": {"es": "Programa de ayuda", "en": "Grant programme"},
+    "prtr.any": {"es": "Todas las ayudas PRTR confirmadas", "en": "Any confirmed PRTR grant"},
+    "prtr.P1": {"es": "Programa 1 · Barrio", "en": "Programme 1 · Neighbourhood"},
+    "prtr.P3": {"es": "Programa 3 · Edificio", "en": "Programme 3 · Building"},
+    "prtr.P4": {"es": "Programa 4 · Vivienda", "en": "Programme 4 · Dwelling"},
+    "prtr.P5": {
+        "es": "Programa 5 · Libro y proyecto",
+        "en": "Programme 5 · Building logbook and project",
+    },
+    "prtr.state": {"es": "Situación administrativa", "en": "Administrative status"},
+    "prtr.address": {"es": "Dirección documental", "en": "Documented address"},
+    "prtr.parcel": {"es": "Parcela vinculada", "en": "Linked parcel"},
+    "prtr.source": {
+        "es": "Fuente PRTR · Comunidad de Madrid / COAM",
+        "en": "PRTR source · Madrid Region / COAM",
+    },
+    "ux.certificate_one": {
+        "es": "1 certificado vinculado a la parcela",
+        "en": "1 certificate linked to the parcel",
+    },
+    "scope.summary": {
+        "es": "Ámbito de los certificados: {counts}",
+        "en": "Certificate scopes: {counts}",
+    },
+    "scope.settings": {"es": "Filtrar por tipo de certificado", "en": "Filter by certificate type"},
+    "scope.column": {"es": "Ámbito", "en": "Scope"},
+    "scope.count": {"es": "N.º de certificados", "en": "Certificates"},
+    "scope.consumption": {"es": "Calificación de consumo", "en": "Consumption rating"},
+    "scope.emissions": {"es": "Calificación de emisiones", "en": "Emissions rating"},
+    "scope.caution": {
+        "es": "Los certificados individuales no acreditan la calificación del edificio completo. El número de certificados no equivale al de viviendas diferentes.",
+        "en": "Individual certificates do not establish the rating of the whole building. Certificate counts do not represent distinct dwellings.",
+    },
+    "scope.selector": {
+        "es": "Certificación energética (CEEE)",
+        "en": "Energy certification (CEEE)",
+    },
+    "scope.all": {"es": "Todos los inmuebles", "en": "All properties"},
+    "scope.any": {"es": "Cualquier certificado", "en": "Any certificate"},
+    "scope.whole_building": {
+        "es": "Edificio completo",
+        "en": "Whole building",
+    },
+    "scope.individual_unit": {
+        "es": "Vivienda individual",
+        "en": "Individual dwelling",
+    },
+    "scope.other": {
+        "es": "Local u otros ámbitos",
+        "en": "Commercial unit or other scopes",
+    },
+    "scope.unknown": {"es": "Ámbito no determinado", "en": "Scope undetermined"},
     "nav.explore": {"es": "Explorar inmuebles", "en": "Explore properties"},
     "nav.address": {"es": "Buscar por dirección", "en": "Search by address"},
     "nav.about": {"es": "Acerca del proyecto", "en": "About the project"},
@@ -216,8 +286,11 @@ MESSAGES = {
         "es": "¿Qué queremos mejorar próximamente?",
         "en": "What would we like to improve next?",
     },
-    "message.0083": {"es": "Vivienda individual", "en": "Individual dwelling"},
-    "message.0084": {"es": "Edificio completo declarado", "en": "Declared whole building"},
+    "message.0083": {
+        "es": "Vivienda individual",
+        "en": "Individual dwelling",
+    },
+    "message.0084": {"es": "Edificio completo", "en": "Whole building"},
     "message.0085": {
         "es": "Órdenes de ejecución históricas",
         "en": "Historical enforcement orders",
@@ -1149,8 +1222,8 @@ MESSAGES = {
         "en": "\n- **Explore a map:** discover properties with available information.\n- **View their characteristics:** examine documented construction data.\n- **Explore energy information:** view linked energy performance certificates.\n- **Research administrative records:** find inspection filing requirements and other available records.\n- **Explore public grants:** identify renovation cases linked to parcels.\n\nAvailability varies by municipality and by the sources authorised for consultation.\n",
     },
     "message.0498": {
-        "es": "\nUtilizamos información procedente de organismos públicos como la Dirección General del Catastro, la Comunidad de Madrid y el Ayuntamiento de Madrid.\n\nCada fuente tiene su propia cobertura, fecha de actualización y limitaciones. Puedes consultar su procedencia en las fichas.\n\n- [Dirección General del Catastro](https://www.catastro.hacienda.gob.es/): productos INSPIRE; se deben aplicar las condiciones del producto de origen.\n- CEEE · Comunidad de Madrid: CC BY 4.0 según el catálogo local. Los certificados conservan su ámbito documental.\n- Conservación y callejero · Ayuntamiento de Madrid: obligaciones y antecedentes disponibles; no hay resultados reales de inspecciones integrados.\n- PRTR · visor de rehabilitación de la Comunidad de Madrid alojado en COAM; Plan Rehabilita · Ayuntamiento de Madrid, captura local facilitada por el usuario. Licencia y procedencia de reutilización pendientes de verificar; consulta bloqueada en modo público.\n\nLos vínculos ambiguos no se convierten en confirmaciones. Los importes pertenecen a expedientes únicos y no se suman por parcela.\n",
-        "en": "\nWe use information published by public bodies including Dirección General del Catastro (Spain's cadastral authority), Comunidad de Madrid (the regional government) and Ayuntamiento de Madrid (Madrid's city council).\n\nEach source has its own coverage, update date and limitations. Property details retain their source information.\n\n- [Dirección General del Catastro](https://www.catastro.hacienda.gob.es/): INSPIRE products; the terms of the original product must be applied.\n- CEEE · Comunidad de Madrid: Spanish energy performance certificates, CC BY 4.0 according to the local catalogue. Each certificate retains its documentary scope.\n- Maintenance records and street directory · Ayuntamiento de Madrid: available filing requirements and administrative records. No actual inspection outcomes have been integrated. ITE/IEE are Spanish building inspection and evaluation requirements; an obligation to file a report is not an inspection result.\n- PRTR · Comunidad de Madrid rehabilitation viewer hosted by COAM. PRTR is Spain's Recovery, Transformation and Resilience Plan. Plan Rehabilita · Ayuntamiento de Madrid, local capture supplied by the owner. Reuse licence and provenance remain unverified; access is blocked in public mode.\n\nAmbiguous links are not treated as confirmations. Amounts belong to unique cases and must not be added across parcels.\n",
+        "es": "\nUtilizamos información procedente de organismos públicos como la Dirección General del Catastro, la Comunidad de Madrid y el Ayuntamiento de Madrid.\n\nCada fuente tiene su propia cobertura, fecha de actualización y limitaciones. Puedes consultar su procedencia en las fichas.\n\n- [Dirección General del Catastro](https://www.catastro.hacienda.gob.es/): productos INSPIRE; se deben aplicar las condiciones del producto de origen.\n- CEEE · Comunidad de Madrid: CC BY 4.0 según el catálogo local. Los certificados conservan su ámbito documental.\n- Conservación y callejero · Ayuntamiento de Madrid: obligaciones y antecedentes disponibles; no hay resultados reales de inspecciones integrados.\n- PRTR · visor de rehabilitación de la Comunidad de Madrid alojado en COAM. Su consulta pública exige autorización documentada en el paquete activo. Plan Rehabilita · Ayuntamiento de Madrid; disponible únicamente según los permisos del paquete activo.\n\nLos vínculos ambiguos no se convierten en confirmaciones. Los importes pertenecen a expedientes únicos y no se suman por parcela.\n",
+        "en": "\nWe use information published by public bodies including Dirección General del Catastro (Spain's cadastral authority), Comunidad de Madrid (the regional government) and Ayuntamiento de Madrid (Madrid's city council).\n\nEach source has its own coverage, update date and limitations. Property details retain their source information.\n\n- [Dirección General del Catastro](https://www.catastro.hacienda.gob.es/): INSPIRE products; the terms of the original product must be applied.\n- CEEE · Comunidad de Madrid: Spanish energy performance certificates, CC BY 4.0 according to the local catalogue. Each certificate retains its documentary scope.\n- Maintenance records and street directory · Ayuntamiento de Madrid: available filing requirements and administrative records. No actual inspection outcomes have been integrated. ITE/IEE are Spanish building inspection and evaluation requirements; an obligation to file a report is not an inspection result.\n- PRTR · Comunidad de Madrid rehabilitation viewer hosted by COAM. PRTR is Spain's Recovery, Transformation and Resilience Plan. Public PRTR access requires documented authorization in the active bundle. Plan Rehabilita · Ayuntamiento de Madrid; availability follows the active bundle permissions.\n\nAmbiguous links are not treated as confirmations. Amounts belong to unique cases and must not be added across parcels.\n",
     },
     "message.0499": {
         "es": "\nEl mapa comercial incluye Madrid, Getafe, Móstoles, Leganés, Alcorcón y Alcalá de Henares. La cobertura catastral de los cinco últimos es parcial.\n\nLa búsqueda por dirección está disponible para Madrid capital; no es una búsqueda postal completa de los otros cinco municipios. Madrid utiliza las asignaciones distritales del producto procesado, sin inferir distritos por proximidad. Las parcelas sin asignación fiable se conservan en «Todos los distritos».\n\nLa cobertura varía por fuente. Plan Rehabilita corresponde a Madrid y la fuente de conservación no está integrada en los otros cinco municipios. Ausencia de datos no significa ausencia de ayudas o antecedentes.\n",
@@ -1608,6 +1681,8 @@ class _SafeVariables(dict):
 
 def t(key, **kwargs):
     """Resolve a stable key with Spanish fallback; unknown keys remain readable."""
+    if key == "ux.certificates" and kwargs.get("count") == 1:
+        key = "ux.certificate_one"
     message = MESSAGES.get(key)
     if message is None:
         return key
@@ -1979,3 +2054,51 @@ class _UI:
 
 
 ui = _UI()
+
+
+def readable_date(value):
+    """Localise ISO dates for summaries, preserving unknown source strings."""
+    from datetime import date
+
+    original = str(value)
+    try:
+        parsed = date.fromisoformat(original[:10])
+    except ValueError:
+        return original
+    months = (
+        (
+            "enero",
+            "febrero",
+            "marzo",
+            "abril",
+            "mayo",
+            "junio",
+            "julio",
+            "agosto",
+            "septiembre",
+            "octubre",
+            "noviembre",
+            "diciembre",
+        )
+        if language() == "es"
+        else (
+            "January",
+            "February",
+            "March",
+            "April",
+            "May",
+            "June",
+            "July",
+            "August",
+            "September",
+            "October",
+            "November",
+            "December",
+        )
+    )
+    month = months[parsed.month - 1]
+    return (
+        f"{parsed.day} de {month} de {parsed.year}"
+        if language() == "es"
+        else f"{parsed.day} {month} {parsed.year}"
+    )

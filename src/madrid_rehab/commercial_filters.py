@@ -19,7 +19,9 @@ RESTRICTED = {"rehabilita", "prtr"}
 def restricted():
     from . import production_bundle as bundle
 
-    return {"prtr"} if bundle.active() and bundle.allowed_plan() else RESTRICTED
+    if bundle.active() and bundle.allowed_plan():
+        return set() if bundle.allowed_prtr() else {"prtr"}
+    return RESTRICTED
 
 
 PUBLIC_BLOCK = (
@@ -87,9 +89,22 @@ def combine(index, selected=(), logic="OR", public=False, ite_refs=()):
     return result.drop_duplicates("parcel_ref14").reset_index(drop=True)
 
 
-def query(code, selected=(), logic="OR"):
+def query(code, selected=(), logic="OR", scope="all", prtr_program="any"):
+    from . import energy_scope
+
+    from . import public_prtr
+
+    if prtr_program not in public_prtr.PROGRAMS:
+        raise ValueError("Invalid PRTR programme")
+    index = store.parcel_index(code).copy()
+    if "prtr" in selected and not (store.mode() == "public" and "prtr" in restricted()):
+        refs = public_prtr.program_refs(code, prtr_program)
+        index["prtr"] = index.parcel_ref14.isin(refs)
+    if scope not in {"all", "any"}:
+        matches = energy_scope.restrict(index, code, scope)
+        index["energy"] = index.parcel_ref14.isin(matches.parcel_ref14)
     return combine(
-        store.parcel_index(code),
+        index,
         selected,
         logic,
         store.mode() == "public",
@@ -166,3 +181,11 @@ def evidence_labels(row):
 
 def context_key(selected, logic):
     return logic + "_" + "_".join(sorted(selected))
+
+
+def result_label(ref, details, name):
+    """Use only confirmed postal labels, otherwise retain cadastral identity."""
+    address = details.get("address")
+    if isinstance(address, str) and address.strip():
+        return address
+    return f"{ref} · {name}"

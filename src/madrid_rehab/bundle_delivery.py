@@ -99,6 +99,14 @@ def pack(directory, output):
     import gzip
 
     directory, output = Path(directory).resolve(), Path(output)
+    manifest = directory / "manifest.json"
+    if manifest.exists():
+        import json
+        from .public_prtr import validate_release
+
+        meta = json.loads(manifest.read_text())
+        if meta.get("policy", {}).get("prtr"):
+            validate_release(meta)
     if output.resolve().is_relative_to(directory):
         raise ValueError("Archive must be outside the runtime directory")
     with (
