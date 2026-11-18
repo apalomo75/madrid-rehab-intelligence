@@ -27,6 +27,7 @@ class FilterTests(unittest.TestCase):
 
     def test_public_restricted(self):
         self.assertTrue(combine(self.index, ["prtr"], public=True).empty)
+        self.assertTrue(combine(self.index.assign(p5=True), ["p5"], public=True).empty)
         self.assertEqual(len(combine(self.index, ["energy", "prtr"], public=True)), 2)
         self.assertTrue(combine(self.index, ["energy", "prtr"], "AND", public=True).empty)
 

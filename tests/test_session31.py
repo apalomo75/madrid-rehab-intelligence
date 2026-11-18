@@ -96,7 +96,7 @@ class FinalInterfaceTests(unittest.TestCase):
         self.assertEqual(
             result_label("REF1", {"address": "CALLE REAL 1"}, "Madrid"), "CALLE REAL 1"
         )
-        for lang, expected in [("es", "3 de febrero de 2024"), ("en", "3 February 2024")]:
+        for lang, expected in [("es", "03/02/2024"), ("en", "03 Feb 2024")]:
             with patch.object(i18n, "language", return_value=lang):
                 self.assertEqual(i18n.readable_date("2024-02-03"), expected)
                 self.assertIn(

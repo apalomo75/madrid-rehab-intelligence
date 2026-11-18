@@ -1160,6 +1160,22 @@ MESSAGES = {
         "es": "Ayudas vinculadas al Plan de Recuperación, Transformación y Resiliencia (PRTR) de España, financiado mediante fondos europeos NextGenerationEU",
         "en": "Grants linked to Spain's Recovery, Transformation and Resilience Plan (PRTR), funded through the EU's NextGenerationEU recovery instrument",
     },
+    "filters.p5": {
+        "es": "Libro del Edificio / proyectos (P5)",
+        "en": "Building Logbook / projects (P5)",
+    },
+    "filters.p5_help": {
+        "es": "**Qué sabemos:** la parcela tiene al menos una ayuda del Programa 5 vinculada mediante una relación catastral confirmada. Estas ayudas están destinadas a la elaboración del Libro del Edificio Existente o a proyectos técnicos de rehabilitación.\n\n"
+        "**Qué no podemos asegurar:** que el Libro del Edificio se haya elaborado, que exista una ITE desfavorable o que se hayan ejecutado obras.\n\n"
+        "El Programa 5 puede financiar tanto libros como proyectos. El paquete público actual no permite distinguir de forma fiable ambas actuaciones para cada expediente.",
+        "en": "**What we know:** at least one Programme 5 grant is linked to this parcel through a confirmed cadastral relationship. These grants fund the preparation of an Existing Building Logbook or technical renovation projects.\n\n"
+        "**What we cannot confirm:** whether a Building Logbook was prepared, whether a technical building inspection (ITE) had an unfavourable result, or whether any works were carried out.\n\n"
+        "Programme 5 can fund both logbooks and projects. The current public data bundle cannot reliably distinguish between these two activities for each grant case.",
+    },
+    "filters.p5_with_prtr": {
+        "es": "Con ambas casillas marcadas, el filtro NextGenerationEU se limita al Programa 5. La opción OR/AND combina este criterio con las demás evidencias seleccionadas.",
+        "en": "When both boxes are checked, the NextGenerationEU filter is limited to Programme 5. OR/AND combines this criterion with the other selected evidence.",
+    },
     "message.0470": {"es": "CEEE", "en": "CEEE"},
     "message.0471": {"es": "ITE/IEE", "en": "ITE/IEE"},
     "message.0472": {"es": "ayudas PRTR", "en": "PRTR grants"},
@@ -1800,6 +1816,24 @@ MESSAGES.update(
 )
 
 
+MESSAGES.update(
+    {
+        "p5.title": {
+            "es": "Libro del Edificio y proyectos de rehabilitación",
+            "en": "Existing Building Logbook and renovation projects",
+        },
+        "p5.joint": {
+            "es": "Ayuda P5 para Libro del Edificio o proyecto de rehabilitación",
+            "en": "P5 grant for an Existing Building Logbook or renovation project",
+        },
+        "p5.scope": {
+            "es": "Concesión documentada; no acredita documento elaborado, pago ni obra ejecutada. El paquete no distingue el tipo de actuación.",
+            "en": "Documented award; does not establish a completed document, payment or completed works. The bundle does not distinguish the activity type.",
+        },
+        "p5.amount": {"es": "Importe concedido del expediente", "en": "Award amount for the case"},
+    }
+)
+
 _BY_SPANISH = {v["es"]: k for k, v in MESSAGES.items()}
 
 
@@ -1930,12 +1964,24 @@ PRESENTATION_COLUMNS = {
 
 
 def localize_frame(frame):
-    if language() == "es" or not isinstance(frame, pd.DataFrame):
+    if not isinstance(frame, pd.DataFrame):
         return frame
     result = frame.copy()
     for column in result:
         if column in PRESENTATION_COLUMNS:
             result[column] = result[column].map(lambda v: translate(v) if isinstance(v, str) else v)
+    for column in result:
+        if str(column) in {"BOAM_C", "BOCM_C"} or any(
+            token in str(column).lower() for token in ("fecha", "date", "period", "actualización")
+        ):
+            result[column] = result[column].map(
+                lambda value: present_dates(
+                    value,
+                    preserve_time=any(
+                        token in str(column).lower() for token in ("consulta", "captur", "query")
+                    ),
+                )
+            )
     return result.rename(columns=lambda label: translate(label))
 
 
@@ -2012,7 +2058,7 @@ class _UI:
             args = list(args)
             original = args[0] if args else kwargs.get("label", "")
             if args and isinstance(original, str):
-                args[0] = translate(original)
+                args[0] = present_dates(translate(original))
             elif "label" in kwargs:
                 kwargs["label"] = translate(kwargs["label"])
             if name == "download_button":
@@ -2048,6 +2094,8 @@ class _UI:
                     # Freeze labels for this render; formatters can also be called
                     # by Streamlit/AppTest outside the session's script context.
                     kwargs["format_func"] = lambda value: labels.get(str(value), str(value))
+            if name == "write":
+                args = [present_dates(v) for v in args]
             return attr(*args, **kwargs)
 
         return call
@@ -2057,48 +2105,45 @@ ui = _UI()
 
 
 def readable_date(value):
-    """Localise ISO dates for summaries, preserving unknown source strings."""
+    """Use the shared date presentation contract in certificate summaries."""
+    return present_dates(str(value), preserve_time=False)
+
+
+def present_dates(value, *, lang=None, preserve_time=True):
+    """Format date-only/midnight ISO presentation tokens; preserve meaningful times and sources."""
     from datetime import date
 
-    original = str(value)
-    try:
-        parsed = date.fromisoformat(original[:10])
-    except ValueError:
-        return original
-    months = (
-        (
-            "enero",
-            "febrero",
-            "marzo",
-            "abril",
-            "mayo",
-            "junio",
-            "julio",
-            "agosto",
-            "septiembre",
-            "octubre",
-            "noviembre",
-            "diciembre",
-        )
-        if language() == "es"
-        else (
-            "January",
-            "February",
-            "March",
-            "April",
+    if isinstance(value, date):
+        value = value.isoformat()
+    if not isinstance(value, str):
+        return value
+    selected = lang or language()
+    pattern = r"(?<![\w/=?-])\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?)?(?![\w/:-])"
+
+    def replace(match):
+        token = match.group()
+        try:
+            day = date.fromisoformat(token[:10])
+        except ValueError:
+            return token
+        if preserve_time and len(token) > 10 and token[11:19] != "00:00:00":
+            return token
+        if selected == "es":
+            return day.strftime("%d/%m/%Y")
+        months = (
+            "Jan",
+            "Feb",
+            "Mar",
+            "Apr",
             "May",
-            "June",
-            "July",
-            "August",
-            "September",
-            "October",
-            "November",
-            "December",
+            "Jun",
+            "Jul",
+            "Aug",
+            "Sep",
+            "Oct",
+            "Nov",
+            "Dec",
         )
-    )
-    month = months[parsed.month - 1]
-    return (
-        f"{parsed.day} de {month} de {parsed.year}"
-        if language() == "es"
-        else f"{parsed.day} {month} {parsed.year}"
-    )
+        return f"{day.day:02d} {months[day.month - 1]} {day.year}"
+
+    return re.sub(pattern, replace, value)

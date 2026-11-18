@@ -12,15 +12,17 @@ LABELS = {
     "ite": "Solo ITE/IEE",
     "rehabilita": "Solo Plan Rehabilita",
     "prtr": "Ayudas NextGenerationEU",
+    "p5": "Libro del Edificio / proyectos (P5)",
 }
-RESTRICTED = {"rehabilita", "prtr"}
+PRTR_FILTERS = {"prtr", "p5"}
+RESTRICTED = {"rehabilita", *PRTR_FILTERS}
 
 
 def restricted():
     from . import production_bundle as bundle
 
     if bundle.active() and bundle.allowed_plan():
-        return set() if bundle.allowed_prtr() else {"prtr"}
+        return set() if bundle.allowed_prtr() else PRTR_FILTERS.copy()
     return RESTRICTED
 
 
@@ -75,16 +77,22 @@ def inspection_refs():
     return _inspection_refs(store.signature(store.root_path()))
 
 
+def effective_filters(selected):
+    """Use the more specific PRTR criterion whenever P5 is selected."""
+    return tuple(key for key in selected if key != "prtr" or "p5" not in selected)
+
+
 def combine(index, selected=(), logic="OR", public=False, ite_refs=()):
     if logic not in {"OR", "AND"} or set(selected) - LABELS.keys():
         raise ValueError("Filtros inválidos")
     result = index.copy()
+    selected = effective_filters(selected)
     result["ite"] = result.parcel_ref14.isin(ite_refs)
     if public:
         for key in restricted():
             result[key] = False
     if selected:
-        masks = result[list(selected)].astype(bool)
+        masks = result.reindex(columns=list(selected), fill_value=False).astype(bool)
         result = result[masks.all(axis=1) if logic == "AND" else masks.any(axis=1)]
     return result.drop_duplicates("parcel_ref14").reset_index(drop=True)
 
@@ -96,10 +104,14 @@ def query(code, selected=(), logic="OR", scope="all", prtr_program="any"):
 
     if prtr_program not in public_prtr.PROGRAMS:
         raise ValueError("Invalid PRTR programme")
+    selected = effective_filters(selected)
+    if "p5" in selected:
+        prtr_program = "P5"
     index = store.parcel_index(code).copy()
-    if "prtr" in selected and not (store.mode() == "public" and "prtr" in restricted()):
-        refs = public_prtr.program_refs(code, prtr_program)
-        index["prtr"] = index.parcel_ref14.isin(refs)
+    for key in PRTR_FILTERS.intersection(selected):
+        if store.mode() != "public" or key not in restricted():
+            refs = public_prtr.program_refs(code, prtr_program)
+            index[key] = index.parcel_ref14.isin(refs)
     if scope not in {"all", "any"}:
         matches = energy_scope.restrict(index, code, scope)
         index["energy"] = index.parcel_ref14.isin(matches.parcel_ref14)
@@ -171,7 +183,11 @@ def _postal_labels(token, active_mode):
 
 
 def evidence_labels(row):
-    labels = [label.removeprefix("Solo ") for key, label in LABELS.items() if row[key]]
+    labels = [
+        label.removeprefix("Solo ")
+        for key, label in LABELS.items()
+        if row.get(key, False) and (key != "prtr" or not row.get("p5", False))
+    ]
     if row.get("construction", False):
         labels.append("Datos constructivos documentados")
     if row.get("administrative", False) and not row["ite"]:
@@ -180,7 +196,7 @@ def evidence_labels(row):
 
 
 def context_key(selected, logic):
-    return logic + "_" + "_".join(sorted(selected))
+    return logic + "_" + "_".join(sorted(effective_filters(selected)))
 
 
 def result_label(ref, details, name):

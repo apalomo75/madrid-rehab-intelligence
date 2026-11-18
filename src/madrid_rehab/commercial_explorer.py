@@ -69,19 +69,20 @@ def render(code, name, initial_ref="", *, district_panel=None, neighborhood_pane
     }
     </style>""")
     selected = []
-    for col, (key, label) in zip(st.columns(4), filters.LABELS.items()):
-        with col:
-            checkbox_panel, settings_panel = st.columns([3, 1]) if key == "energy" else (col, None)
-            if checkbox_panel.checkbox(
+    help_keys = {"prtr": "filters.prtr_help", "p5": "filters.p5_help"}
+    blocked = filters.restricted() if catalog.mode() == "public" else set()
+    with st.container(horizontal=True, vertical_alignment="center", gap="medium"):
+        for key, label in filters.LABELS.items():
+            if st.checkbox(
                 label,
                 key="priority_" + code + "_" + key,
                 on_change=toggle_energy if key == "energy" else None,
-                help=t("filters.prtr_help") if key == "prtr" else None,
-                disabled=catalog.mode() == "public" and key in filters.restricted(),
+                help=t(help_keys[key]) if key in help_keys else None,
+                disabled=key in blocked,
             ):
                 selected.append(key)
-            if settings_panel is not None:
-                with settings_panel, st.container(key="ceee_settings"):
+            if key == "energy":
+                with st.container(key="ceee_settings", width=42):
                     with st.popover(
                         t("scope.settings"),
                         icon=":material/tune:",
@@ -97,13 +98,15 @@ def render(code, name, initial_ref="", *, district_panel=None, neighborhood_pane
                         )
     scope = st.session_state[scope_key] if "energy" in selected else "any"
     prtr_program = "any"
-    if "prtr" in selected and catalog.mode() != "public":
+    if "prtr" in filters.effective_filters(selected) and catalog.mode() != "public":
         prtr_program = st.selectbox(
             t("prtr.programme"),
             ["any", "P1", "P3", "P4", "P5"],
             format_func=lambda value: t("prtr." + value),
             key="prtr_program_" + code,
         )
+    if filters.PRTR_FILTERS.issubset(selected):
+        st.caption(t("filters.p5_with_prtr"))
     logic = st.radio(
         "Combinar evidencias",
         ["OR", "AND"],

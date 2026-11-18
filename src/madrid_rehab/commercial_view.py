@@ -325,7 +325,7 @@ def render(model, errors):
         if bundle.allowed_prtr():
             st.caption(bundle.metadata()["prtr_authorization"]["attribution"])
         for evidence in model.grants:
-            if evidence.quality == Quality.PARCEL:
+            if evidence.quality == Quality.PARCEL and evidence.value.get("Programa") != "P5":
                 st.write(evidence.entity_id + " · " + str(evidence.value.get("Programa") or "—"))
                 st.write(
                     translate("Concesión del expediente (€)")
@@ -341,6 +341,20 @@ def render(model, errors):
                         st.write(t(key) + ": " + str(evidence.value[field]))
                 st.link_button(t("prtr.source"), evidence.value["Fuente original"])
         st.caption(t("ux.grant_scope"))
+    p5 = p5_records(model)
+    if p5:
+        st.markdown("**" + t("p5.title") + "**")
+        st.caption(t("p5.scope"))
+        for evidence in p5:
+            st.write(t("p5.joint") + " · P5 · " + evidence.entity_id)
+            amount = evidence.value.get("Concesión del expediente (€)")
+            st.write(t("p5.amount") + ": " + (f"{amount:,.2f} €" if amount is not None else "—"))
+            st.write(
+                t("prtr.state")
+                + ": "
+                + translate(evidence.value.get("Situación administrativa") or "—")
+            )
+            st.link_button(t("prtr.source"), evidence.value["Fuente original"])
     st.markdown("**Plan Rehabilita**")
     cases = {e.entity_id: e for e in model.municipal_grants}
     if not cases:
@@ -383,3 +397,16 @@ def render(model, errors):
         st.warning(t("ux.errors"))
     with st.expander(t("ux.full")):
         render_details(model, errors)
+
+
+def p5_records(model):
+    """Only confirmed parcel awards; never propagate CP evidence to BU."""
+    if model.kind != "cp":
+        return []
+    return list(
+        {
+            e.entity_id: e
+            for e in model.grants
+            if e.quality == Quality.PARCEL and e.value.get("Programa") == "P5"
+        }.values()
+    )

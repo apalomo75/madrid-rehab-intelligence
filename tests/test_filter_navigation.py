@@ -38,5 +38,6 @@ class FilterNavigationTests(unittest.TestCase):
             ).run()
             self.assertFalse(app.exception)
             self.assertTrue(app.checkbox(key="priority_28079_prtr").disabled)
+            self.assertTrue(app.checkbox(key="priority_28079_p5").disabled)
             self.assertTrue(app.checkbox(key="priority_28079_rehabilita").disabled)
             self.assertTrue(any("Publicación externa bloqueada" in w.value for w in app.warning))
