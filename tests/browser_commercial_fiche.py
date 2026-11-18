@@ -19,6 +19,7 @@ def main():
             browser = pw.chromium.launch(headless=True, args=["--no-sandbox"])
             page = browser.new_page(viewport={"width": 1366, "height": 900})
             page.goto(args.url, wait_until="networkidle")
+            page.locator(".st-key-welcome_open_address button").click()
             for query, title, section in [
                 (
                     "CALLE BAILEN 16",

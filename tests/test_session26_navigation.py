@@ -9,7 +9,7 @@ from streamlit.testing.v1 import AppTest
 
 from madrid_rehab import commercial_filters as filters
 from madrid_rehab.commercial_geography import district_index, district_names, restrict
-from madrid_rehab.navigation import PRIMARY
+from madrid_rehab.navigation import ROUTES
 
 
 class Session26Tests(unittest.TestCase):
@@ -21,18 +21,24 @@ class Session26Tests(unittest.TestCase):
         env.start()
         self.addCleanup(env.stop)
         app = AppTest.from_file("src/madrid_rehab/app.py", default_timeout=180).run()
+        app.button(key="welcome_open_explore").click().run()
         self.assertFalse(app.exception)
         return app
 
     def test_three_routes_and_saved_context(self):
         app = self.app()
-        self.assertEqual(app.radio(key="city_navigation").options, list(PRIMARY))
+        self.assertEqual(app.radio(key="city_navigation").options, list(ROUTES))
         app.selectbox(key="catalog_district").set_value("11").run()
         app.checkbox(key="priority_28079_rehabilita").check().run()
         self.assertEqual(app.metric[0].value, "153")
         next(b for b in app.button if b.label == "Abrir ficha").click().run()
         self.assertFalse(app.exception)
-        self.assertIsNotNone(app.session_state["fiche_identity"])
+        identity = app.session_state["fiche_identity"]
+        self.assertIsNotNone(identity)
+        app.radio(key="city_navigation").set_value("Inicio").run()
+        self.assertFalse(app.get("deck_gl_json_chart"))
+        app.button(key="welcome_open_explore").click().run()
+        self.assertEqual(app.session_state["fiche_identity"], identity)
         next(b for b in app.button if b.label == "Volver a la lista").click().run()
         self.assertTrue(app.checkbox(key="priority_28079_rehabilita").value)
         app.radio(key="city_navigation").set_value("Acerca del proyecto").run()

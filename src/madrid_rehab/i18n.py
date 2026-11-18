@@ -89,6 +89,60 @@ MESSAGES = {
         "en": "Commercial unit or other scopes",
     },
     "scope.unknown": {"es": "Ámbito no determinado", "en": "Scope undetermined"},
+    "nav.home": {
+        "es": "Inicio",
+        "en": "Home",
+    },
+    "welcome.subtitle": {
+        "es": "Explora el potencial de rehabilitación de los edificios de Madrid",
+        "en": "Explore the potential for building renovation in Madrid",
+    },
+    "welcome.author": {
+        "es": "Desarrollado por Alejandro Palomo",
+        "en": "Developed by Alejandro Palomo",
+    },
+    "welcome.intro": {
+        "es": "Reunimos información pública sobre inmuebles, eficiencia energética, conservación y ayudas para facilitar la consulta de datos dispersos entre administraciones y registros.",
+        "en": "We bring together public data on properties, energy efficiency, building maintenance and grants so you can consult records from different authorities in one place.",
+    },
+    "welcome.map_alt": {
+        "es": "Esquema de calles y manzanas inspirado en Madrid. Parcelas resaltadas se conectan mediante líneas a cuatro capas de información pública.",
+        "en": "Schematic streets and blocks inspired by Madrid. Lines connect highlighted parcels to four layers of public information.",
+    },
+    "welcome.map_caption": {
+        "es": "Ilustración conceptual de Madrid y sus capas de información pública",
+        "en": "Conceptual illustration of Madrid and its layers of public information",
+    },
+    "welcome.map_inspections": {"es": "Inspecciones", "en": "Inspections"},
+    "welcome.map_building_book": {"es": "Libro del Edificio / P5", "en": "Building Logbook / P5"},
+    "welcome.explore": {
+        "es": "Explora el mapa, aplica filtros y consulta información pública vinculada a las parcelas catastrales.",
+        "en": "Explore the map, apply filters and view public information linked to cadastral parcels.",
+    },
+    "welcome.address": {
+        "es": "Localiza un inmueble por su dirección y consulta la información disponible.",
+        "en": "Find a property by address and view the available information.",
+    },
+    "welcome.about": {
+        "es": "Conoce las fuentes de datos, la metodología, la cobertura y las limitaciones del proyecto.",
+        "en": "Learn about the project's data sources, methodology, coverage and limitations.",
+    },
+    "welcome.data_title": {
+        "es": "El desafío está en los datos",
+        "en": "The challenge is in the data",
+    },
+    "welcome.data": {
+        "es": "Localizamos fuentes públicas, limpiamos y conectamos sus registros y los convertimos en información fácil de consultar. La cobertura depende de los datos disponibles y de la calidad de sus vínculos.",
+        "en": "We find public sources, clean and link their records, and make the information easy to consult. Coverage depends on the available data and the quality of the links between records.",
+    },
+    "welcome.collaborate_title": {
+        "es": "Ayúdanos a mejorar",
+        "en": "Help us improve",
+    },
+    "welcome.collaborate": {
+        "es": "El proyecto sigue evolucionando. Son bienvenidas las sugerencias de nuevas fuentes, mejor cobertura o funcionalidades.",
+        "en": "The project is evolving. Suggestions for new sources, better coverage or new features are welcome.",
+    },
     "nav.explore": {"es": "Explorar inmuebles", "en": "Explore properties"},
     "nav.address": {"es": "Buscar por dirección", "en": "Search by address"},
     "nav.about": {"es": "Acerca del proyecto", "en": "About the project"},
@@ -1996,9 +2050,10 @@ def _change_language():
     }
 
 
-def language_selector():
+def language_selector(*, sidebar=True):
     _st.session_state.setdefault("i18n_language", DEFAULT_LANGUAGE)
-    _st.sidebar.radio(
+    target = _st.sidebar if sidebar else _st
+    target.radio(
         "ES | EN",
         LANGUAGES,
         horizontal=True,

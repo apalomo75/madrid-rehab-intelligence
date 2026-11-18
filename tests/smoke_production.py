@@ -94,6 +94,7 @@ def main():
     ):
         record("initial")
         app = AppTest.from_file("src/madrid_rehab/app.py", default_timeout=180).run()
+        app.button(key="welcome_open_explore").click().run()
         record("startup_map", app)
         assert app.radio(key="language_selector").value == "ES"
         assert app.title[0].value == "Explorar inmuebles"

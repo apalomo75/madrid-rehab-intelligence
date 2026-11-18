@@ -19,6 +19,7 @@ def main():
             browser = pw.chromium.launch(headless=True, args=["--no-sandbox"])
             page = browser.new_page(viewport={"width": 1440, "height": 1050})
             page.goto(args.url, wait_until="networkidle")
+            page.locator(".st-key-welcome_open_address button").click()
             expect(page.get_by_text("Buscar un inmueble por dirección", exact=True)).to_be_visible()
             page.get_by_label("Calle o dirección", exact=True).fill("CL BAILEN 12")
             page.get_by_label("Calle o dirección", exact=True).press("Enter")

@@ -151,6 +151,7 @@ class PublicLanguageTests(unittest.TestCase):
         env.start()
         self.addCleanup(env.stop)
         app = AppTest.from_file("src/madrid_rehab/app.py", default_timeout=180).run()
+        app.button(key="welcome_open_explore").click().run()
         self.assertFalse(app.exception)
         self.assertEqual(app.radio(key="language_selector").value, "ES")
         return app
@@ -220,6 +221,9 @@ class PublicLanguageTests(unittest.TestCase):
         result.set_value(uid).run()
         next(b for b in app.button if b.label == "Abrir ficha del inmueble").click().run()
         identity = app.session_state["fiche_identity"]
+        app.radio(key="city_navigation").set_value("Inicio").run()
+        app.button(key="welcome_open_address").click().run()
+        self.assertFalse(app.exception)
         for language in ["EN", "ES"]:
             self.switch(app, language)
             self.assertEqual(app.session_state["fiche_identity"], identity)

@@ -165,35 +165,36 @@ def main():
     )
     from .i18n import language_selector
 
-    language_selector()
-    from . import production_bundle as bundle
-    from .bundle_delivery import ensure
+    from .navigation import HOME, main_view
 
-    try:
-        ensure()
-    except (OSError, ValueError):
-        from .i18n import t
-
-        st.error(t("bundle.missing"))
-        return
-    if bundle.active():
-        try:
-            bundle.metadata()
-        except (OSError, ValueError, KeyError):
-            from .i18n import t
-
-            st.error(t("bundle.missing"))
-            return
-    if os.environ.get("MADRID_REHAB_DEMO", "0") == "1":
-        mode = st.sidebar.radio("Modo", ["Demostración", "Analista"], key="demo_mode")
-        if mode == "Demostración":
-            from .demo import render
+    demo = os.environ.get("MADRID_REHAB_DEMO") == "1" and (
+        st.sidebar.radio("Modo", ["Demostración", "Analista"], key="demo_mode") == "Demostración"
+    )
+    if not demo:
+        view = main_view()
+        if view == HOME:
+            from .welcome_view import render
 
             render()
             return
-    from .navigation import main_view
 
-    view = main_view()
+    language_selector()
+    from . import production_bundle as bundle
+    from .bundle_delivery import ensure
+    from .i18n import t
+
+    try:
+        ensure()
+        if bundle.active():
+            bundle.metadata()
+    except (OSError, ValueError, KeyError):
+        st.error(t("bundle.missing"))
+        return
+    if demo:
+        from .demo import render
+
+        render()
+        return
     if view == "Acerca del proyecto":
         from .about_view import render
 

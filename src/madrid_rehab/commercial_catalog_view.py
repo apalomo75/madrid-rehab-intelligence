@@ -69,8 +69,6 @@ def render():
             "Cada ficha detalla procedencia, fecha, ámbito y vínculo. PRTR y Plan Rehabilita: reutilización pendiente de verificar; bloqueados en público."
         )
     if code == "28079" and "city_navigation" in st.session_state:
+        from .navigation import PRIMARY, open_product
 
-        def postal_search():
-            st.session_state["city_navigation"] = "Buscar por dirección"
-
-        st.button("Buscar por dirección en Madrid", on_click=postal_search)
+        st.button("Buscar por dirección en Madrid", on_click=open_product, args=(PRIMARY[1],))

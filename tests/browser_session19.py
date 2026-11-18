@@ -30,6 +30,7 @@ def main():
             )
             page = browser.new_page(viewport={"width": 1800, "height": 1100})
             page.goto("http://127.0.0.1:8512", wait_until="networkidle")
+            page.locator(".st-key-welcome_open_explore button").click()
             for code in json.loads((ec.ROOT / "manifest.json").read_text())["municipality_codes"]:
                 name = demo.municipalities().set_index("municipality_code").loc[code, "name"]
                 selector(page, "Municipio").click()

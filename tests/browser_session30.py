@@ -19,6 +19,7 @@ def main():
             browser = pw.chromium.launch(headless=True, args=["--no-sandbox"])
             page = browser.new_page(viewport={"width": 1440, "height": 1000})
             page.goto(args.url, wait_until="networkidle")
+            page.locator(".st-key-welcome_open_explore button").click()
             page.get_by_role("button", name="Abrir ficha", exact=True).first.click()
             page.get_by_role("button", name="Ampliar ficha", exact=True).wait_for()
             page.screenshot(path=str(args.output_dir / "desktop.png"), full_page=True)

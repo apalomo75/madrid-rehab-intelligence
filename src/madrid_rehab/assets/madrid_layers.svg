@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 174" preserveAspectRatio="none" fill="none">
+  <defs>
+    <pattern id="blocks" width="64" height="42" patternUnits="userSpaceOnUse" patternTransform="rotate(-13)">
+      <path d="M4 4h25v14H4zm31 0h25v14H35zM4 24h25v14H4zm31 0h25v14H35z" fill="#1b2c3a" stroke="#2c4050"/>
+      <path d="M8 8h11v7H8zm31 19h16v7H39z" fill="#253b49"/>
+    </pattern>
+    <linearGradient id="fade">
+      <stop offset=".5" stop-color="#101e2b" stop-opacity="0"/>
+      <stop offset="1" stop-color="#101e2b"/>
+    </linearGradient>
+  </defs>
+  <path fill="#101e2b" d="M0 0h760v174H0z"/>
+  <path fill="url(#blocks)" d="M0 0h760v174H0z"/>
+  <!-- The river curve loosely evokes the Manzanares. The street grid is schematic. -->
+  <path d="M142-10c-56 36-50 57-16 79s37 51-24 113" stroke="#273e50" stroke-width="19"/>
+  <path d="M142-10c-56 36-50 57-16 79s37 51-24 113" stroke="#152a39" stroke-width="13"/>
+  <path d="m-20 150 253-69 138-8 114-89M199 183l34-102 3-91m132 191 3-108 46-19 144 7 205 45"
+        stroke="#101e2b" stroke-width="12"/>
+  <path d="m-20 150 253-69 138-8 114-89M199 183l34-102 3-91m132 191 3-108 46-19 144 7 205 45"
+        stroke="#3b5060" stroke-width="2"/>
+  <path d="m8 44 179 14m-68 57 61 15" stroke="#596f7c" stroke-width="3"/>
+  <path fill="url(#fade)" d="M0 0h760v174H0z"/>
+  <g stroke-width="1.5">
+    <path d="m251 38 29-7 5 19-29 7z" fill="#295c59" stroke="#83e2cf"/>
+    <path d="m394 92 30-7 4 17-30 7z" fill="#294d70" stroke="#91bee8"/>
+    <path d="m311 116 29-7 5 20-29 7z" fill="#295c59" stroke="#83e2cf"/>
+    <path d="m459 122 28-6 4 17-28 6z" fill="#294d70" stroke="#91bee8"/>
+    <path d="M281 39h202l23-17h252M425 93h89l29-30h215M341 121h216l18-10h183M488 125h115l25 26h130"
+          stroke="#101e2b" stroke-width="4"/>
+    <path d="M281 39h202l23-17h252M341 121h216l18-10h183" stroke="#83e2cf" opacity=".75"/>
+    <path d="M425 93h89l29-30h215M488 125h115l25 26h130" stroke="#91bee8" opacity=".85"/>
+    <path d="M751 22h7m-7 89h7" stroke="#83e2cf" stroke-width="4" stroke-linecap="round"/>
+    <path d="M751 63h7m-7 88h7" stroke="#91bee8" stroke-width="4" stroke-linecap="round"/>
+  </g>
+</svg>

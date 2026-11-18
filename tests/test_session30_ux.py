@@ -85,6 +85,7 @@ class PublicUXTests(unittest.TestCase):
         app = AppTest.from_string(
             "from madrid_rehab.city_app import main\nmain()", default_timeout=180
         ).run()
+        app.button(key="welcome_open_explore").click().run()
         self.assertFalse(app.exception)
         prefix = "municipal_28079__cp_catalog_public_OR_none"
         page = next(s for s in app.selectbox if s.label == "Página de inmuebles")
@@ -110,6 +111,7 @@ class PublicUXTests(unittest.TestCase):
         app = AppTest.from_string(
             "from madrid_rehab.city_app import main\nmain()", default_timeout=180
         ).run()
+        app.button(key="welcome_open_explore").click().run()
         app.selectbox(key="catalog_district").set_value("07").run()
         app.selectbox(key="energy_scope_28079").set_value("any").run()
         chart = json.loads(app.get("deck_gl_json_chart")[0].proto.json)

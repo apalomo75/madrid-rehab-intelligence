@@ -84,6 +84,7 @@ def main():
             {"MADRID_REHAB_PUBLIC": public, "MADRID_REHAB_DEV": "0", "MADRID_REHAB_DEMO": "0"},
         ):
             app = AppTest.from_file("src/madrid_rehab/app.py", default_timeout=180).run()
+            app.button(key="welcome_open_explore").click().run()
             assert not app.exception
             app.radio(key="language_selector").set_value("EN").run()
             for evidence in ["energy", "ite", "rehabilita", "prtr"]:

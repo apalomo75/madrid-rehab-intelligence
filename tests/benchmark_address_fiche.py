@@ -39,7 +39,13 @@ def main():
             for offset in [0, count // 2, count - 1]
         ]
     app, initial_ms = run_ms(
-        lambda: AppTest.from_file("src/madrid_rehab/app.py", default_timeout=120).run()
+        lambda: (
+            AppTest.from_file("src/madrid_rehab/app.py", default_timeout=120)
+            .run()
+            .button(key="welcome_open_address")
+            .click()
+            .run()
+        )
     )
     cases = []
     for row in samples:

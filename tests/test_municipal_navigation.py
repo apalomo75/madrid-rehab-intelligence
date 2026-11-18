@@ -48,6 +48,7 @@ class MunicipalNavigationTests(unittest.TestCase):
     def test_normal_entry_uses_shared_explorer_and_six_readable_names(self):
         with patch.dict(os.environ, {"MADRID_REHAB_DEMO": "0", "MADRID_REHAB_PUBLIC": "1"}):
             app = AppTest.from_file("src/madrid_rehab/app.py", default_timeout=90).run()
+            app.button(key="welcome_open_explore").click().run()
             self.assertFalse(app.exception)
             self.assertEqual(app.radio(key="city_navigation").value, "Explorar inmuebles")
             selector = next(x for x in app.selectbox if x.label == "Municipio")
