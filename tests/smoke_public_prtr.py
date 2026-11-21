@@ -13,6 +13,8 @@ from urllib.parse import unquote, urlparse
 import pandas as pd
 from streamlit.testing.v1 import AppTest
 
+
+from test_municipal_map_events import pick_first_parcel
 from madrid_rehab import production_bundle as bundle, public_prtr as prtr
 from madrid_rehab import commercial_filters as filters
 
@@ -97,7 +99,7 @@ def run(output):
         record("public_all_prtr", app)
         assert not any(box.key == "prtr_program_28079" for box in app.selectbox)
         # Parcel chosen through the real public filtered list, then read its complete evidence.
-        next(b for b in app.button if b.label == "Abrir ficha").click().run()
+        pick_first_parcel(app)
         record("public_fiche", app)
         identity = app.session_state["fiche_identity"]
         assert identity is not None
@@ -106,7 +108,7 @@ def run(output):
         record("public_fiche_en", app)
         assert app.session_state["fiche_identity"] == identity
         assert not any(box.key == "prtr_program_28079" for box in app.selectbox)
-        next(b for b in app.button if b.label == "Back to the list").click().run()
+        next(b for b in app.button if b.label == "Close property record").click().run()
         record("public_return", app)
         assert app.metric[0].value == "3,300"
         app.radio(key="language_selector").set_value("ES").run()

@@ -5,6 +5,8 @@ from unittest.mock import patch
 
 import pandas as pd
 
+
+from test_municipal_map_events import pick_first_parcel
 from madrid_rehab.energy_scope import classify, memberships, restrict
 
 
@@ -137,7 +139,7 @@ class PublicBundleTests(unittest.TestCase):
             self.assertEqual(app.metric[0].value, "18,953")
             app.selectbox(key="catalog_district").set_value("07").run()
             self.assertEqual(app.metric[0].value, "421")
-            next(b for b in app.button if b.label == "Abrir ficha").click().run()
+            pick_first_parcel(app)
             identity = app.session_state["fiche_identity"]
             self.assertIsNotNone(identity)
             app.radio(key="language_selector").set_value("EN").run()

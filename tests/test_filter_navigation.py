@@ -1,13 +1,15 @@
-"""Commercial list/map selection context in Streamlit (not WebGL validation)."""
+"""Commercial map selection context in Streamlit (not WebGL validation)."""
 
 import os
 import unittest
 from unittest.mock import patch
 from streamlit.testing.v1 import AppTest
 
+from test_municipal_map_events import pick_first_parcel
+
 
 class FilterNavigationTests(unittest.TestCase):
-    def test_list_fiche_return_and_filter_persistence(self):
+    def test_map_fiche_return_and_filter_persistence(self):
         with patch.dict(os.environ, {"MADRID_REHAB_PUBLIC": "0"}):
             app = AppTest.from_string(
                 "from madrid_rehab.commercial_catalog_view import render\nrender()",
@@ -18,11 +20,11 @@ class FilterNavigationTests(unittest.TestCase):
             self.assertFalse(app.exception)
             count = app.metric[0].value
             self.assertEqual(count, "1,919")
-            next(b for b in app.button if b.label == "Abrir ficha").click().run()
+            pick_first_parcel(app)
             self.assertFalse(app.exception)
             self.assertEqual(app.metric[0].value, count)
             self.assertIsNotNone(app.session_state["fiche_identity"])
-            next(b for b in app.button if b.label == "Volver a la lista").click().run()
+            next(b for b in app.button if b.label == "Cerrar ficha").click().run()
             self.assertFalse(app.exception)
             self.assertTrue(app.checkbox(key="priority_28079_rehabilita").value)
             self.assertEqual(app.metric[0].value, count)

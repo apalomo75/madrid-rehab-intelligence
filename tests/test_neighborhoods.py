@@ -10,6 +10,8 @@ import pandas as pd
 from shapely.geometry import box
 from streamlit.testing.v1 import AppTest
 
+
+from test_municipal_map_events import pick_first_parcel
 from madrid_rehab import neighborhoods as geo
 from madrid_rehab import commercial_filters as filters, production_bundle as bundle
 from madrid_rehab.ingest import digest
@@ -209,7 +211,7 @@ class OfficialProductTests(unittest.TestCase):
                 )
                 self.assertEqual(int(app.metric[0].value.replace(",", "")), count)
             app.radio(key="priority_logic_28079").set_value("OR").run()
-            next(b for b in app.button if b.label == "Abrir ficha").click().run()
+            pick_first_parcel(app)
             self.assertFalse(app.exception)
             identity = app.session_state["fiche_identity"]
             self.assertIn(identity[2], set(expected.parcel_ref14))
@@ -233,18 +235,16 @@ class OfficialProductTests(unittest.TestCase):
         self.assertEqual(app.selectbox(key="catalog_district").value, "all")
         self.assertEqual(app.selectbox(key="catalog_neighborhood").value, "all")
 
-    def test_map_first_middle_last_reset_and_independent_list(self):
+    def test_map_first_middle_last_reset_and_selection(self):
         app = self.app()
         prefix = "municipal_28079__cp_catalog_public_OR_"
         self.assertTrue(app.button(key=prefix + "_map_previous").disabled)
         self.assertFalse(app.button(key=prefix + "_map_next").disabled)
-        app.selectbox(key=prefix + "_list_page").set_value(2).run()
         first = json.loads(app.get("deck_gl_json_chart")[0].proto.json)
         first_refs = {f["properties"]["unit_id"] for f in first["layers"][0]["data"]["features"]}
         app.button(key=prefix + "_map_next").click().run()
         self.assertFalse(app.exception)
         self.assertEqual(app.session_state[prefix + "_map_page_all"], 1)
-        self.assertEqual(app.selectbox(key=prefix + "_list_page").value, 2)
         middle = json.loads(app.get("deck_gl_json_chart")[0].proto.json)
         middle_refs = {f["properties"]["unit_id"] for f in middle["layers"][0]["data"]["features"]}
         self.assertFalse(first_refs & middle_refs)
@@ -266,8 +266,8 @@ class OfficialProductTests(unittest.TestCase):
         app.button(key=prefix + "_map_next").click().run()
         app.selectbox(key="catalog_neighborhood").set_value("174").run()
         self.assertEqual(app.session_state[prefix + "_map_page_all"], 0)
-        # A selected side-list parcel moves to its actual map page; changing page clears it.
-        next(b for b in app.button if b.label == "View details").click().run()
+        # Changing the page clears the selected parcel.
+        pick_first_parcel(app)
         self.assertFalse(app.exception)
         app.button(key=prefix + "_map_next").click().run()
         self.assertIsNone(app.session_state["fiche_identity"])

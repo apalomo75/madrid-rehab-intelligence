@@ -6,6 +6,8 @@ from pathlib import Path
 
 from playwright.sync_api import sync_playwright
 
+from browser_session39 import touch_parcel
+
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -20,7 +22,7 @@ def main():
             page = browser.new_page(viewport={"width": 1440, "height": 1000})
             page.goto(args.url, wait_until="networkidle")
             page.locator(".st-key-welcome_open_explore button").click()
-            page.get_by_role("button", name="Abrir ficha", exact=True).first.click()
+            touch_parcel(page, page.locator(".st-key-commercial_results canvas").first, False)
             page.get_by_role("button", name="Ampliar ficha", exact=True).wait_for()
             page.screenshot(path=str(args.output_dir / "desktop.png"), full_page=True)
             page.set_viewport_size({"width": 390, "height": 844})

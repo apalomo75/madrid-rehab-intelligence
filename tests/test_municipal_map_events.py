@@ -40,6 +40,13 @@ def send_chart_event(app, identifier):
     assert not app.error, [e.value for e in app.error]
 
 
+def pick_first_parcel(app):
+    chart = json.loads(app.get("deck_gl_json_chart")[0].proto.json)
+    ref = chart["layers"][0]["data"]["features"][0]["properties"]["unit_id"]
+    send_chart_event(app, ref)
+    return ref
+
+
 class MapEventTests(unittest.TestCase):
     def make_app(self):
         return AppTest.from_string(

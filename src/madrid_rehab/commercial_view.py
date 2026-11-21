@@ -296,11 +296,11 @@ def render(model, errors):
     ]
     for col, label in zip(st.columns(3), labels):
         entries = sorted(values.get(label, set()))
-        col.metric(
-            label,
+        col.markdown("**" + label + "**")
+        col.write(
             (" · ".join(entries) or "—")
             if len(entries) <= 2
-            else t("ux.multiple", count=len(entries)),
+            else t("ux.multiple", count=len(entries))
         )
     st.caption(t("ux.scope"))
     st.markdown("**CEEE**")

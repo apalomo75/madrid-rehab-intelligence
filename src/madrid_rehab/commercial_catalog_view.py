@@ -31,13 +31,12 @@ def render():
             with st.expander("Detalle del catálogo"):
                 st.text(str(exc))
         return
-    municipality_panel, district_panel, neighborhood_panel = st.columns(3)
 
     def change_municipality():
         st.session_state["catalog_district"] = "all"
         st.session_state["catalog_neighborhood"] = "all"
 
-    code = municipality_panel.selectbox(
+    code = st.selectbox(
         "Municipio",
         list(NAMES),
         format_func=NAMES.get,
@@ -50,9 +49,7 @@ def render():
         )
     from .commercial_explorer import render as render_explorer
 
-    render_explorer(
-        code, NAMES[code], district_panel=district_panel, neighborhood_panel=neighborhood_panel
-    )
+    render_explorer(code, NAMES[code])
     from . import production_bundle as bundle
 
     if bundle.active():

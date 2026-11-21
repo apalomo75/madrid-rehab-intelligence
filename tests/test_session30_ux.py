@@ -8,6 +8,8 @@ from unittest.mock import patch
 import pandas as pd
 from streamlit.testing.v1 import AppTest
 
+
+from test_municipal_map_events import pick_first_parcel
 from madrid_rehab.address_search import parse_query
 from madrid_rehab.commercial_map import selected_deck
 
@@ -81,29 +83,23 @@ class PublicUXTests(unittest.TestCase):
         self.env.start()
         self.addCleanup(self.env.stop)
 
-    def test_list_replace_return_page_and_dialog(self):
+    def test_map_selection_return_page_and_dialog(self):
         app = AppTest.from_string(
             "from madrid_rehab.city_app import main\nmain()", default_timeout=180
         ).run()
         app.button(key="welcome_open_explore").click().run()
         self.assertFalse(app.exception)
-        prefix = "municipal_28079__cp_catalog_public_OR_none"
-        page = next(s for s in app.selectbox if s.label == "Página de inmuebles")
-        key = page.key
-        prefix = key.removesuffix("_list_page")
-        page.set_value(1).run()
-        next(b for b in app.button if b.label == "Abrir ficha").click().run()
-        self.assertFalse(app.exception)
+        next(b for b in app.button if b.label == "Siguiente").click().run()
+        pick_first_parcel(app)
         self.assertFalse(any(s.label == "Página de inmuebles" for s in app.selectbox))
-        self.assertTrue(app.get("deck_gl_json_chart"))
         next(b for b in app.button if b.label == "Ampliar ficha").click().run()
         self.assertFalse(app.exception)
         self.assertTrue(app.get("dialog"))
-        # A fresh rerun closes the test dialog without modifying parcel or filters.
         app.run()
-        next(b for b in app.button if b.label == "Volver a la lista").click().run()
+        next(b for b in app.button if b.label == "Cerrar ficha").click().run()
         self.assertFalse(app.exception)
-        self.assertEqual(app.selectbox(key=prefix + "_list_page").value, 1)
+        self.assertIsNone(app.session_state["fiche_identity"])
+        self.assertTrue(any("Página 2 de" in m.value for m in app.markdown))
 
     def test_serialized_map_event_preserves_district_and_opens_fiche(self):
         from test_municipal_map_events import send_chart_event

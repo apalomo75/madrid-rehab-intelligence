@@ -9,6 +9,8 @@ from unittest.mock import patch
 
 import pandas as pd
 
+
+from test_municipal_map_events import pick_first_parcel
 from madrid_rehab import commercial_filters as filters, i18n, public_prtr
 from madrid_rehab import production_bundle as bundle
 from madrid_rehab.commercial_fiche import Quality
@@ -142,12 +144,10 @@ class RealP5PresentationTests(unittest.TestCase):
         chart = json.loads(app.get("deck_gl_json_chart")[0].proto.json)
         map_refs = {f["properties"]["unit_id"] for f in chart["layers"][0]["data"]["features"]}
         self.assertEqual(map_refs, refs)
-        button = next(b for b in app.button if b.label == "Abrir ficha")
-        ref = button.key.rsplit("_", 1)[1]
+        ref = pick_first_parcel(app)
         self.assertIn(ref, refs)
-        button.click().run()
         self.assertEqual(app.session_state["fiche_identity"], ("28079", "cp", ref))
-        next(b for b in app.button if b.label == "Volver a la lista").click().run()
+        next(b for b in app.button if b.label == "Cerrar ficha").click().run()
         send_chart_event(app, ref)
         self.assertEqual(app.session_state["fiche_identity"], ("28079", "cp", ref))
         app.checkbox(key="priority_28079_prtr").check().run()

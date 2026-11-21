@@ -37,6 +37,7 @@ KINDS = {
     "PZA": "PLAZA",
     "PS": "PASEO",
     "Pº": "PASEO",
+    "P.º": "PASEO",
 }
 
 
@@ -57,10 +58,11 @@ def normalize(value):
 
 def street_key(value):
     value = normalize(value)
-    match = re.match(r"^(\w+)[./]?\s+(.+)$", value)
+    match = re.match(r"^(P\.º|\w+)(?:\s*[./]\s*|\s+)(.+)$", value)
     if match:
         kind, rest = match.groups()
-        value = KINDS.get(kind, kind) + " " + rest
+        if kind in KINDS:
+            value = KINDS[kind] + " " + rest
     return value
 
 
@@ -79,6 +81,12 @@ def parse_query(street, number="", complement=""):
             if suffix and complement and normalize(suffix) != normalize(complement):
                 raise ValueError("Complementos contradictorios")
             complement = complement or suffix or ""
+    match = re.fullmatch(r"(\d+)\s*([A-Za-z]|BIS)", text(number), re.I)
+    if match:
+        number, suffix = match.groups()
+        if complement and normalize(suffix) != normalize(complement):
+            raise ValueError("Complementos contradictorios")
+        complement = complement or suffix
     return street_key(street), number_key(number), normalize(complement)
 
 

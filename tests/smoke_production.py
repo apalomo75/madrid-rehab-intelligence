@@ -12,6 +12,8 @@ from unittest.mock import patch
 import pandas as pd
 from streamlit.testing.v1 import AppTest
 
+
+from test_municipal_map_events import pick_first_parcel
 from madrid_rehab import production_bundle as bundle
 
 
@@ -104,13 +106,13 @@ def main():
         assert app.checkbox(key="priority_28079_prtr").disabled
         assert not app.checkbox(key="priority_28079_rehabilita").disabled
         assert not any(x.key == "technical_navigation" for x in app.selectbox)
-        assert len([b for b in app.button if b.label == "Abrir ficha"]) == 10
+        assert not any(b.label == "Abrir ficha" for b in app.button)
         chart = json.loads(app.get("deck_gl_json_chart")[0].proto.json)
         assert len(chart["layers"][0]["data"]["features"]) <= 500
         app.checkbox(key="priority_28079_rehabilita").check().run()
         assert app.metric[0].value == f"{bundle.metadata()['plan_confirmed_parcels']:,}"
         record("plan_filter", app)
-        next(b for b in app.button if b.label == "Abrir ficha").click().run()
+        pick_first_parcel(app)
         assert app.session_state["fiche_identity"] is not None
         assert any("Subvención revisada" in e.value for e in app.markdown)
         record("plan_fiche", app)
@@ -121,7 +123,7 @@ def main():
         assert app.checkbox(key="priority_28079_rehabilita").value
         record("english", app)
         app.radio(key="language_selector").set_value("ES").run()
-        next(b for b in app.button if b.label == "Volver a la lista").click().run()
+        next(b for b in app.button if b.label == "Cerrar ficha").click().run()
         assert app.checkbox(key="priority_28079_rehabilita").value
         record("return_preserves_filters", app)
         app.checkbox(key="priority_28079_energy").check().run()
@@ -140,7 +142,7 @@ def main():
         for code in ["28065", "28092", "28074", "28007", "28005"]:
             app.selectbox(key="catalog_municipality").set_value(code).run()
             assert app.metric[0].value == f"{bundle.metadata()['counts'][code]:,}"
-            next(b for b in app.button if b.label == "Abrir ficha").click().run()
+            pick_first_parcel(app)
             record("fiche_" + code, app)
         app.radio(key="city_navigation").set_value("Buscar por dirección").run()
         app.text_input(key="postal_street").set_value("CL BAILEN")

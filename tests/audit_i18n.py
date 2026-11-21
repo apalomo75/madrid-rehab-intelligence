@@ -9,6 +9,8 @@ from unittest.mock import patch
 
 from streamlit.testing.v1 import AppTest
 
+from test_municipal_map_events import pick_first_parcel
+
 from madrid_rehab.i18n import MESSAGES
 
 
@@ -91,7 +93,7 @@ def main():
                 if app.checkbox(key="priority_28079_" + evidence).disabled:
                     continue
                 app.checkbox(key="priority_28079_" + evidence).check().run()
-                next(b for b in app.button if b.label == "View details").click().run()
+                pick_first_parcel(app)
                 assert not app.exception
                 items = capture(app)
                 records.append(
@@ -106,7 +108,7 @@ def main():
                 )
                 next(b for b in app.button if b.label == "Clear filters").click().run()
             app.selectbox(key="catalog_municipality").set_value("28065").run()
-            next(b for b in app.button if b.label == "View details").click().run()
+            pick_first_parcel(app)
             assert not app.exception
             items = capture(app)
             records.append(

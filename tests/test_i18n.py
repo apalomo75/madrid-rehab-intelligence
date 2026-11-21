@@ -10,6 +10,8 @@ from unittest.mock import patch
 import pandas as pd
 from streamlit.testing.v1 import AppTest
 
+
+from test_municipal_map_events import pick_first_parcel
 from madrid_rehab import i18n
 
 
@@ -165,14 +167,13 @@ class PublicLanguageTests(unittest.TestCase):
         app.selectbox(key="catalog_district").set_value("11").run()
         app.checkbox(key="priority_28079_rehabilita").check().run()
         prefix = "municipal_28079__cp_catalog_local_OR_rehabilita"
-        app.selectbox(key=prefix + "_list_page").set_value(1).run()
-        next(b for b in app.button if b.label == "Abrir ficha").click().run()
+        pick_first_parcel(app)
         identity = app.session_state["fiche_identity"]
         count = app.metric[0].value
         for language in ["EN", "ES"]:
             self.switch(app, language)
             self.assertEqual(app.session_state["fiche_identity"], identity)
-            self.assertEqual(app.session_state[prefix + "_saved_page"], 1)
+            self.assertEqual(app.session_state[prefix + "_map_page_all"], 0)
             self.assertEqual(app.selectbox(key="catalog_municipality").value, "28079")
             self.assertEqual(app.selectbox(key="catalog_district").value, "11")
             self.assertTrue(app.checkbox(key="priority_28079_rehabilita").value)
@@ -185,9 +186,9 @@ class PublicLanguageTests(unittest.TestCase):
                 "Explore properties" if language == "EN" else "Explorar inmuebles",
             )
         self.switch(app, "EN")
-        next(b for b in app.button if b.label == "Back to the list").click().run()
+        next(b for b in app.button if b.label == "Close property record").click().run()
         self.assertIsNone(app.session_state["fiche_identity"])
-        self.assertEqual(app.selectbox(key=prefix + "_list_page").value, 1)
+        self.assertEqual(app.session_state[prefix + "_map_page_all"], 0)
 
     def test_all_filters_logic_and_map_page_persist(self):
         app = self.app()
@@ -260,7 +261,7 @@ class PublicLanguageTests(unittest.TestCase):
     def test_pilot_identity_and_secondary_cases(self):
         app = self.app()
         app.selectbox(key="catalog_municipality").set_value("28065").run()
-        next(b for b in app.button if b.label == "Abrir ficha").click().run()
+        pick_first_parcel(app)
         identity = app.session_state["fiche_identity"]
         self.switch(app, "EN")
         self.assertEqual(app.session_state["fiche_identity"], identity)

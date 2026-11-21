@@ -82,6 +82,7 @@ def main():
             expect(cards).to_have_count(3)
 
         page.locator(".st-key-welcome_open_explore button").click()
+        page.get_by_text("Filtros y zona", exact=True).click()
         p5_label = "Libro del Edificio / proyectos (P5)"
         p5 = page.get_by_role("checkbox", name=p5_label)
         expect(p5).to_be_enabled()
@@ -90,6 +91,7 @@ def main():
         page.get_by_text("Inicio", exact=True).click()
         expect(cards).to_have_count(3)
         page.locator(".st-key-welcome_open_explore button").click()
+        page.get_by_text("Filtros y zona", exact=True).click()
         expect(p5).to_be_checked()
         page.get_by_text("Inicio", exact=True).click()
         expect(cards).to_have_count(3)

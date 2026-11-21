@@ -20,6 +20,7 @@ def main():
             page = browser.new_page(viewport={"width": 1440, "height": 1000})
             page.goto(args.url, wait_until="networkidle")
             page.locator(".st-key-welcome_open_explore button").click()
+            page.get_by_text("Filtros y zona", exact=True).click()
 
             def choose(label, option):
                 page.get_by_role("combobox", name=label, exact=True).click()

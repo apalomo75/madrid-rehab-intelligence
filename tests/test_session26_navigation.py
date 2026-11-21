@@ -7,6 +7,8 @@ from unittest.mock import patch
 
 from streamlit.testing.v1 import AppTest
 
+
+from test_municipal_map_events import pick_first_parcel
 from madrid_rehab import commercial_filters as filters
 from madrid_rehab.commercial_geography import district_index, district_names, restrict
 from madrid_rehab.navigation import ROUTES
@@ -31,7 +33,7 @@ class Session26Tests(unittest.TestCase):
         app.selectbox(key="catalog_district").set_value("11").run()
         app.checkbox(key="priority_28079_rehabilita").check().run()
         self.assertEqual(app.metric[0].value, "153")
-        next(b for b in app.button if b.label == "Abrir ficha").click().run()
+        pick_first_parcel(app)
         self.assertFalse(app.exception)
         identity = app.session_state["fiche_identity"]
         self.assertIsNotNone(identity)
@@ -39,7 +41,7 @@ class Session26Tests(unittest.TestCase):
         self.assertFalse(app.get("deck_gl_json_chart"))
         app.button(key="welcome_open_explore").click().run()
         self.assertEqual(app.session_state["fiche_identity"], identity)
-        next(b for b in app.button if b.label == "Volver a la lista").click().run()
+        next(b for b in app.button if b.label == "Cerrar ficha").click().run()
         self.assertTrue(app.checkbox(key="priority_28079_rehabilita").value)
         app.radio(key="city_navigation").set_value("Acerca del proyecto").run()
         self.assertTrue(any("experimental" in i.value for i in app.info))
@@ -80,7 +82,7 @@ class Session26Tests(unittest.TestCase):
     def test_pilots_and_district_change(self):
         app = self.app()
         app.checkbox(key="priority_28079_energy").check().run()
-        next(b for b in app.button if b.label == "Abrir ficha").click().run()
+        pick_first_parcel(app)
         app.selectbox(key="catalog_district").set_value("07").run()
         self.assertIsNone(app.session_state["fiche_identity"])
         self.assertTrue(app.checkbox(key="priority_28079_energy").value)
@@ -91,7 +93,7 @@ class Session26Tests(unittest.TestCase):
             app.checkbox(key="priority_" + code + "_energy").check().run()
             self.assertEqual(app.metric[0].value, f"{len(filters.query(code, ['energy'])):,}")
 
-    def test_map_and_list_share_district_and_evidence(self):
+    def test_map_matches_district_and_evidence(self):
         from test_municipal_map_events import send_chart_event
 
         app = self.app()
@@ -101,9 +103,7 @@ class Session26Tests(unittest.TestCase):
         chart = json.loads(app.get("deck_gl_json_chart")[0].proto.json)
         mapped = {f["properties"]["unit_id"] for f in chart["layers"][0]["data"]["features"]}
         self.assertEqual(mapped, expected)  # all 153 fit in the bounded map page
-        listed = {b.key.split("_open_")[-1] for b in app.button if b.label == "Abrir ficha"}
-        self.assertLessEqual(listed, expected)
-        self.assertEqual(len(listed), 10)
+        self.assertFalse(any(b.label == "Abrir ficha" for b in app.button))
         ref = sorted(mapped)[0]
         send_chart_event(app, ref)
         self.assertEqual(app.session_state["fiche_identity"][2], ref)

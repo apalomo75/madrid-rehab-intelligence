@@ -33,7 +33,7 @@ def remember_product_context():
             or k == "commercial_context"
             or (
                 k.startswith("municipal_")
-                and (k.endswith(("_selected", "_area", "_list_page")) or "_map_page_" in k)
+                and (k.endswith(("_selected", "_area")) or "_map_page_" in k)
             )
         }
     elif previous == PRIMARY[1]:

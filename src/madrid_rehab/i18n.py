@@ -29,6 +29,30 @@ MESSAGES = {
         "es": "Origen de los datos: Ayuntamiento de Madrid · Barrios municipales · 31/08/2026. Asignación espacial por mayor superficie; no identifica edificios físicos.",
         "en": "Data source: Ayuntamiento de Madrid · Municipal neighborhoods · 31/08/2026. Spatial allocation by largest overlap; does not identify physical buildings.",
     },
+    "map.parcel_count": {"es": "Parcelas catastrales", "en": "Cadastral parcels"},
+    "map.filters": {"es": "Filtros y zona", "en": "Filters and area"},
+    "map.select_parcel": {
+        "es": "Pulsa una parcela amarilla para abrir su ficha.",
+        "en": "Select a yellow parcel to open its record.",
+    },
+    "map.close_fiche": {"es": "Cerrar ficha", "en": "Close property record"},
+    "map.spatial_pages": {
+        "es": "Cada página muestra una zona distinta, con hasta 500 parcelas.",
+        "en": "Each page shows a different area, with up to 500 parcels.",
+    },
+    "postal.one_match": {"es": "1 coincidencia", "en": "1 match"},
+    "postal.matches": {
+        "es": "{total} coincidencias · página {page} de {pages}",
+        "en": "{total} matches · page {page} of {pages}",
+    },
+    "postal.case_coverage": {
+        "es": "Cobertura parcial. Se buscan direcciones declaradas en expedientes NextGenerationEU con parcela confirmada. La búsqueda no cubre todo el callejero ni verifica portales.",
+        "en": "Partial coverage. Search addresses reported in NextGenerationEU cases with a confirmed parcel. This does not cover all addresses or verify entrances.",
+    },
+    "postal.case_no_result": {
+        "es": "No se encontró esta dirección entre los expedientes con parcela confirmada. Puedes consultar el mapa de inmuebles del municipio.",
+        "en": "No matching address was found among cases with a confirmed parcel. You can explore the municipality’s property map.",
+    },
     "map.previous": {"es": "Anterior", "en": "Previous"},
     "map.next": {"es": "Siguiente", "en": "Next"},
     "map.page": {"es": "Página {page} de {pages}", "en": "Page {page} of {pages}"},

@@ -41,7 +41,14 @@ def render(*, technical=False):
         on_change=clear,
     )
     coverage = meta["municipalities"][code]
-    if not coverage["indexed_addresses"]:
+    from . import grant_address_search as grant_addresses
+
+    case_search = (
+        not technical and not coverage["indexed_addresses"] and bool(grant_addresses.index(code))
+    )
+    if case_search:
+        st.info(t("postal.case_coverage"))
+    elif not coverage["indexed_addresses"]:
         st.warning(
             "Este municipio no dispone de calles y números recuperables en las fuentes locales integradas. "
             "Se necesita una fuente postal oficial adicional. Puede seguir explorando sus parcelas y construcciones desde Explorar municipios."
@@ -50,9 +57,9 @@ def render(*, technical=False):
         st.text_input(
             "Calle o dirección", key="postal_street", placeholder="Por ejemplo: Calle Bailén 12"
         )
-        col1, col2 = st.columns(2)
-        col1.text_input("Número", key="postal_number")
-        col2.text_input("Complemento (opcional)", key="postal_complement")
+        st.text_input("Número", key="postal_number")
+        if technical:
+            st.text_input("Complemento (opcional)", key="postal_complement")
         submitted = st.form_submit_button("Buscar", type="primary")
     st.button("Limpiar búsqueda", on_click=clear)
     if submitted:
@@ -60,7 +67,7 @@ def render(*, technical=False):
             code,
             st.session_state.postal_street,
             st.session_state.postal_number,
-            st.session_state.postal_complement,
+            st.session_state.get("postal_complement", "") if technical else "",
         )
         st.session_state["postal_page"] = 0
         st.session_state.pop("postal_open", None)
@@ -74,6 +81,9 @@ def render(*, technical=False):
         if technical:
             rows, total = postal.search(*query, offset=page * 100)
             located = total > 0
+        elif case_search:
+            rows, total = grant_addresses.search(*query, offset=page * 100)
+            located = total > 0
         else:
             from . import commercial_catalog_store as catalog
 
@@ -82,6 +92,9 @@ def render(*, technical=False):
         st.warning(str(exc))
         return
     if not total:
+        if case_search:
+            st.info(t("postal.case_no_result"))
+            return
         if located and not technical:
             st.info(catalog.INSUFFICIENT)
             return
@@ -92,7 +105,14 @@ def render(*, technical=False):
         if suggestions:
             st.write("Vías documentadas que comienzan así: " + " · ".join(suggestions))
         return
-    st.write(f"{total} coincidencias · página {page + 1} de {(total + 99) // 100}")
+    st.write(
+        t(
+            "postal.one_match" if total == 1 else "postal.matches",
+            total=total,
+            page=page + 1,
+            pages=(total + 99) // 100,
+        )
+    )
     if total > 100:
 
         def change_page(delta):
@@ -109,7 +129,7 @@ def render(*, technical=False):
 
     def label(uid):
         r = lookup[uid]
-        return f"{r['original']} · {postal.NAMES[code]}"
+        return r["original"] if case_search else f"{r['original']} · {postal.NAMES[code]}"
 
     choice = st.selectbox(
         "Seleccione la dirección correcta",
@@ -124,22 +144,11 @@ def render(*, technical=False):
         )
         return
     row = lookup[choice]
-    with st.expander(t("ux.postal_details")):
-        st.json(
-            {
-                key: row.get(key)
-                for key in (
-                    "id",
-                    "access_id",
-                    "access_type",
-                    "source_row",
-                    "source_sha256",
-                    "original",
-                    "refs",
-                    "status",
-                )
-            }
-        )
+    if case_search:
+        render_result(code, choice, row["reference"], technical=False)
+        return
+    if technical:
+        render_postal_details(row)
     if row["status"] != "confirmed":
         st.warning(
             LABELS[row["status"]] + ". No se puede abrir una ficha con identidad confirmada."
@@ -161,12 +170,36 @@ def render(*, technical=False):
         st.warning(
             "Este acceso tiene varias parcelas vinculadas. Sus atributos y expedientes se consultan por separado."
         )
+    render_result(code, choice, ref, row=row, technical=technical)
+
+
+def render_postal_details(row):
+    with st.expander(t("ux.postal_details")):
+        st.json(
+            {
+                key: row.get(key)
+                for key in (
+                    "id",
+                    "access_id",
+                    "access_type",
+                    "source_row",
+                    "source_sha256",
+                    "original",
+                    "refs",
+                    "status",
+                )
+            }
+        )
+
+
+def render_result(code, choice, ref, *, row=None, technical=False):
     if st.button("Abrir ficha del inmueble", disabled=ref is None, type="primary"):
         st.session_state["postal_open"] = (choice, ref)
         st.session_state["fiche_route_" + "_".join((code, "cp", ref))] = ("cp", ref)
     opened = st.session_state.get("postal_open")
     if (
         not technical
+        and row is not None
         and ref is not None
         and st.session_state.get("postal_dismissed") != (choice, ref)
     ):
@@ -182,13 +215,8 @@ def render(*, technical=False):
     else:
         from .commercial_catalog_view import render_fiche
 
-    if technical:
-        render_fiche(code, postal.NAMES[code], ref, postal=row)
-    else:
+    if not technical:
         from .commercial_map import render as render_map
 
-        map_panel, fiche_panel = st.columns([0.65, 0.35], gap="medium")
-        with map_panel:
-            render_map(code, ref, "postal_map_" + choice + "_" + ref)
-        with fiche_panel:
-            render_fiche(code, postal.NAMES[code], ref, postal=row)
+        render_map(code, ref, "postal_map_" + ref)
+    render_fiche(code, postal.NAMES[code], ref, postal=row)

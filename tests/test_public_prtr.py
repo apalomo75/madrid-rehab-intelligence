@@ -9,6 +9,8 @@ from unittest.mock import patch
 
 import pandas as pd
 
+
+from test_municipal_map_events import pick_first_parcel
 from madrid_rehab import public_prtr as prtr, commercial_filters as filters
 from madrid_rehab import production_bundle as bundle
 from madrid_rehab.bundle_delivery import pack
@@ -264,7 +266,7 @@ class PrtrInterfaceTests(unittest.TestCase):
             self.assertEqual(app.metric[0].value, "3,300")
             app.selectbox(key="prtr_program_28079").set_value("P4").run()
             self.assertEqual(app.metric[0].value, "2,333")
-            next(b for b in app.button if b.label == "Abrir ficha").click().run()
+            pick_first_parcel(app)
             self.assertFalse(app.exception)
             self.assertTrue(any("PRTR" in m.value for m in app.markdown))
             identity = app.session_state["fiche_identity"]
@@ -273,7 +275,7 @@ class PrtrInterfaceTests(unittest.TestCase):
             self.assertEqual(app.selectbox(key="prtr_program_28079").value, "P4")
             self.assertEqual(app.selectbox(key="prtr_program_28079").label, "Grant programme")
             self.assertEqual(app.session_state["fiche_identity"], identity)
-            next(b for b in app.button if b.label == "Back to the list").click().run()
+            next(b for b in app.button if b.label == "Close property record").click().run()
             self.assertFalse(app.exception)
             self.assertEqual(app.metric[0].value, "2,333")
 

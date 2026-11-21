@@ -10,6 +10,8 @@ from unittest.mock import patch
 
 from streamlit.testing.v1 import AppTest
 
+from test_municipal_map_events import pick_first_parcel
+
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -52,7 +54,7 @@ def main():
         assert app.checkbox(key="priority_28079_rehabilita").disabled
         assert not any(s.key == "technical_navigation" for s in app.selectbox)
         assert len(app.get("deck_gl_json_chart")) == 1
-        assert len([b for b in app.button if b.label == "Abrir ficha"]) == 10
+        assert not any(b.label == "Abrir ficha" for b in app.button)
         check(app, "ES count/list/map payload/restricted filters")
         app.radio(key="language_selector").set_value("EN").run()
         assert app.title[0].value == "Explore properties"
@@ -61,13 +63,13 @@ def main():
         app.selectbox(key="catalog_district").set_value("07").run()
         app.checkbox(key="priority_28079_energy").check().run()
         check(app, "district and public energy filter")
-        next(b for b in app.button if b.label == "Abrir ficha").click().run()
+        pick_first_parcel(app)
         assert app.session_state["fiche_identity"] is not None
         check(app, "Madrid fiche")
         for code in ["28065", "28092", "28074", "28007", "28005"]:
             app.selectbox(key="catalog_municipality").set_value(code).run()
             check(app, "municipality " + code)
-            next(b for b in app.button if b.label == "Abrir ficha").click().run()
+            pick_first_parcel(app)
             assert app.session_state["fiche_identity"][0] == code
             check(app, "pilot fiche " + code)
         app.radio(key="city_navigation").set_value("Buscar por dirección").run()
